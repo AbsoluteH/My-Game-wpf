@@ -1,0 +1,316 @@
+<Window x:Class="TradeGame.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="中世纪跑商 · 最小原型" Height="640" Width="980"
+        WindowStartupLocation="CenterScreen">
+    <!-- 整体两栏布局：左栏为商队状态/舱内货物/前往城市，右栏为市场交易区与行会任务 -->
+    <Grid Margin="10">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300"/>
+            <ColumnDefinition Width="10"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ========== 左栏 ========== -->
+        <DockPanel Grid.Column="0">
+            <!-- 商队状态：天数、所在地、城市等级、城市声望、金币、载重，由 MainWindow.Refresh() 填充 -->
+            <GroupBox Header="商队状态" DockPanel.Dock="Top" Padding="8">
+                <StackPanel>
+                    <TextBlock x:Name="DayText"/>
+                    <TextBlock x:Name="CityText" Margin="0,4,0,0"/>
+                    <TextBlock x:Name="CityLevelText" Margin="0,4,0,0"/>
+                    <TextBlock x:Name="ReputationText" Margin="0,4,0,0"/>
+                    <DockPanel Margin="0,4,0,0">
+                        <Button DockPanel.Dock="Right" Content="作弊台" Width="60" Height="22" Padding="0"
+                                Click="CheatButton_Click"/>
+                        <TextBlock x:Name="GoldText" VerticalAlignment="Center"/>
+                    </DockPanel>
+                    <TextBlock x:Name="LoadText" Margin="0,4,0,0"/>
+                    <Button x:Name="InvestButton" Content="投资建设（1000 金币 → 繁荣 +1000）"
+                            Height="26" Margin="0,8,0,0" Click="InvestButton_Click"/>
+                    <Button x:Name="ExpandButton" Content="扩容商队（+25 载重）"
+                            Height="26" Margin="0,6,0,0" Click="ExpandButton_Click"/>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- 舱内货物：只读表格，显示货物名、数量与持仓平均买入成本；卖出时在这里选择货物 -->
+            <GroupBox Header="舱内货物（卖出在此选择）" DockPanel.Dock="Top" Padding="8" Margin="0,8,0,0" Height="170">
+                <DataGrid x:Name="CargoGrid" AutoGenerateColumns="False" IsReadOnly="True"
+                          HeadersVisibility="Column" CanUserAddRows="False" SelectionMode="Single"
+                          GridLinesVisibility="Horizontal">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="货物" Binding="{Binding Name}" Width="*"/>
+                        <DataGridTextColumn Header="数量" Binding="{Binding Quantity}" Width="60"/>
+                        <DataGridTextColumn Header="平均成本" Binding="{Binding AverageCost}" Width="80"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </GroupBox>
+
+            <!-- 前往其他城市：下拉框显示目的地、城市等级、预计天数与路费 -->
+            <GroupBox Header="前往其他城市" Padding="8" Margin="0,8,0,0">
+                <StackPanel>
+                    <ComboBox x:Name="DestinationBox" DisplayMemberPath="Label" Height="24"/>
+                    <Button Content="出发" Height="28" Margin="0,8,0,0" Click="TravelButton_Click"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="Gray" Margin="0,8,0,0"
+                               Text="买入时选中右侧市场里的货物（只限本城经营且已达解锁条件的货物）；卖出时选中左侧舱内货物，任何货物城市都会收购。价格随城市产销倍率、库存和每日随机波动变化；一次买得越多单价越高，一次卖得越多单价越低。"/>
+                </StackPanel>
+            </GroupBox>
+        </DockPanel>
+
+        <!-- ========== 右栏：市场 / 行会 分页 ========== -->
+        <TabControl Grid.Column="2">
+            <!-- 市场分页 -->
+            <TabItem Header="市场">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>  <!-- 市场标题 -->
+                        <RowDefinition Height="Auto"/>  <!-- 未解锁商品提示 -->
+                        <RowDefinition Height="*"/>     <!-- 市场列表 -->
+                        <RowDefinition Height="Auto"/>  <!-- 交易按钮 -->
+                        <RowDefinition Height="130"/>   <!-- 消息栏 -->
+                    </Grid.RowDefinitions>
+
+                    <TextBlock x:Name="MarketTitle" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,6"/>
+
+                    <!-- 未解锁提示：本城经营但还没达标的商品，以及缺少的条件 -->
+                    <TextBlock Grid.Row="1" x:Name="UnlockHintText" Foreground="Gray" TextWrapping="Wrap"
+                               Margin="0,0,0,6"/>
+
+                    <!-- 市场列表：货物、产地、城市库存、买价、卖价；只显示已解锁的商品 -->
+                    <DataGrid Grid.Row="2" x:Name="MarketGrid" AutoGenerateColumns="False" IsReadOnly="True"
+                              HeadersVisibility="Column" CanUserAddRows="False" SelectionMode="Single"
+                              GridLinesVisibility="Horizontal">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="货物" Binding="{Binding Name}" Width="*"/>
+                            <DataGridTextColumn Header="产地" Binding="{Binding Origin}" Width="100"/>
+                            <DataGridTextColumn Header="城市库存" Binding="{Binding Stock}" Width="80"/>
+                            <DataGridTextColumn Header="买价" Binding="{Binding BuyPrice}" Width="70"/>
+                            <DataGridTextColumn Header="卖价" Binding="{Binding SellPrice}" Width="70"/>
+                            <DataGridTextColumn Header="行情" Binding="{Binding Trend}" Width="60"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- 交易操作区 -->
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,0">
+                        <TextBlock Text="数量" VerticalAlignment="Center"/>
+                        <TextBox x:Name="QuantityBox" Width="70" Margin="8,0" Text="1"
+                                 VerticalContentAlignment="Center"/>
+                        <Button Content="买入" Width="80" Click="BuyButton_Click"/>
+                        <Button Content="卖出" Width="80" Margin="8,0,0,0" Click="SellButton_Click"/>
+                        <Button Content="全部买入" Width="90" Margin="8,0,0,0" Click="BuyAllButton_Click"/>
+                        <Button Content="全部卖出" Width="90" Margin="8,0,0,0" Click="SellAllButton_Click"/>
+                    </StackPanel>
+
+                    <!-- 消息栏 -->
+                    <GroupBox Grid.Row="4" Header="消息" Margin="0,8,0,0" Padding="6">
+                        <ListBox x:Name="LogList" BorderThickness="0"/>
+                    </GroupBox>
+                </Grid>
+            </TabItem>
+
+            <!-- 行会任务分页 -->
+            <TabItem Header="行会任务">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>  <!-- 行会声望 -->
+                        <RowDefinition Height="170"/>   <!-- 本城发布的任务 -->
+                        <RowDefinition Height="Auto"/>  <!-- 接受按钮 -->
+                        <RowDefinition Height="*"/>     <!-- 我已接受的任务 -->
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Margin="0,0,0,6">
+                        <TextBlock x:Name="GuildReputationText" FontSize="14" FontWeight="SemiBold"/>
+                        <TextBlock Text="收购：本城缺什么就收什么（不超过本城等级的货物），从别处采购后交回本城；运货：只收本城生产且已解锁的货物，买入后送到指定城市。城市升级后行会会立即换一批与等级匹配的新任务；接单后该位置 3-5 天才补货，同种货物 8 天内不能再接。声望也可以捐赠金币换取，每次捐赠后价格递增。"
+                                   Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                    </StackPanel>
+
+                    <!-- 本城行会发布的任务：收购 / 运货，交付后同时涨金币与声望 -->
+                    <DataGrid Grid.Row="1" x:Name="GuildOfferGrid" AutoGenerateColumns="False" IsReadOnly="True"
+                              HeadersVisibility="Column" CanUserAddRows="False" SelectionMode="Single"
+                              GridLinesVisibility="Horizontal">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="类型" Binding="{Binding TypeName}" Width="55"/>
+                            <DataGridTextColumn Header="货物" Binding="{Binding GoodName}" Width="*"/>
+                            <DataGridTextColumn Header="数量" Binding="{Binding Quantity}" Width="50"/>
+                            <DataGridTextColumn Header="交付地" Binding="{Binding TargetName}" Width="70"/>
+                            <DataGridTextColumn Header="报酬" Binding="{Binding RewardGold}" Width="70"/>
+                            <DataGridTextColumn Header="声望" Binding="{Binding RewardReputation}" Width="50"/>
+                            <DataGridTextColumn Header="截止" Binding="{Binding Deadline}" Width="70"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Content="接受任务" Width="100" Click="AcceptMissionButton_Click"/>
+                        <Button x:Name="DonateButton" Content="捐赠行会换声望" Width="170" Margin="8,0,0,0"
+                                Click="DonateButton_Click"/>
+                        <TextBlock Text="运货任务需把货送到交付城市再点交付" Foreground="Gray"
+                                   VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    </StackPanel>
+
+                    <GroupBox Grid.Row="3" Header="我已接受的任务" Margin="0,8,0,0" Padding="6">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Bottom" Content="交付任务（需在交付城市且货物足够）"
+                                    Height="26" Margin="0,6,0,0" Click="DeliverMissionButton_Click"/>
+                            <DataGrid x:Name="MyMissionGrid" AutoGenerateColumns="False" IsReadOnly="True"
+                                      HeadersVisibility="Column" CanUserAddRows="False" SelectionMode="Single"
+                                      GridLinesVisibility="Horizontal">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="类型" Binding="{Binding TypeName}" Width="50"/>
+                                    <DataGridTextColumn Header="起点" Binding="{Binding OriginName}" Width="65"/>
+                                    <DataGridTextColumn Header="交付地" Binding="{Binding TargetName}" Width="65"/>
+                                    <DataGridTextColumn Header="货物" Binding="{Binding GoodName}" Width="*"/>
+                                    <DataGridTextColumn Header="数量" Binding="{Binding Quantity}" Width="50"/>
+                                    <DataGridTextColumn Header="报酬" Binding="{Binding RewardGold}" Width="70"/>
+                                    <DataGridTextColumn Header="声望" Binding="{Binding RewardReputation}" Width="50"/>
+                                    <DataGridTextColumn Header="截止" Binding="{Binding Deadline}" Width="70"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </GroupBox>
+                </Grid>
+            </TabItem>
+            <TabItem Header="酒馆">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>  <!-- 说明 -->
+                        <RowDefinition Height="Auto"/>  <!-- 打听按钮 -->
+                        <RowDefinition Height="*"/>     <!-- 已知消息 -->
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Margin="0,0,0,6">
+                        <TextBlock x:Name="TavernTitleText" FontSize="14" FontWeight="SemiBold"/>
+                        <TextBlock Text="城里偶尔会传出行情消息：某座城市的某种货物价格暴涨或大跌，买卖价都会受影响。花 20 金币打听一条，就能提前决定把货往哪儿运；没有新消息时不扣钱。"
+                                   Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,6">
+                        <Button x:Name="TavernButton" Content="打听消息（20 金币）" Width="150" Click="TavernButton_Click"/>
+                        <TextBlock x:Name="TavernHintText" Foreground="Gray"
+                                   VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    </StackPanel>
+
+                    <GroupBox Grid.Row="2" Header="已知消息" Padding="6">
+                        <ListBox x:Name="RumorList" FontSize="13"/>
+                    </GroupBox>
+                </Grid>
+            </TabItem>
+
+            <!-- 产业分页：本城作坊、仓库与可建作坊 -->
+            <TabItem Header="产业">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>  <!-- 标题与规则说明 -->
+                        <RowDefinition Height="Auto"/>  <!-- 仓库状态与建造/升级 -->
+                        <RowDefinition Height="170"/>   <!-- 本城作坊 / 仓库库存 -->
+                        <RowDefinition Height="Auto"/>  <!-- 操作按钮 -->
+                        <RowDefinition Height="*"/>     <!-- 可建作坊 -->
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Margin="0,0,0,6">
+                        <TextBlock x:Name="IndustryTitle" FontSize="14" FontWeight="SemiBold"/>
+                        <TextBlock Text="只能生产本城盛产的货物；分类决定建坊门槛：原材料 Lv1、加工品 Lv2、成品 Lv3，舶来品只能进口转售、不能建坊。日产 5 / 3 / 1 件（按货物等级），作坊位上限 = 城市等级 × 2。原料作坊当天的产出可直接供给同城加工坊；加工坊默认从仓库取料，也可改为按市场价采购并设每日上限，缺料就停产。建作坊前必须先建本城仓库，仓库满了会暂停生产。"
+                                   Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Margin="0,0,0,6">
+                        <DockPanel>
+                            <Button x:Name="WarehouseButton" DockPanel.Dock="Right" Width="240"
+                                    Click="WarehouseButton_Click"/>
+                            <TextBlock x:Name="WarehouseText" VerticalAlignment="Center"/>
+                        </DockPanel>
+                        <DockPanel Margin="0,6,0,0">
+                            <Button x:Name="AutoSellApplyButton" DockPanel.Dock="Right" Width="80"
+                                    Content="应用" Margin="8,0,0,0" Click="AutoSellApplyButton_Click"/>
+                            <ComboBox x:Name="AutoSellBox" DockPanel.Dock="Right" Width="150"
+                                      Margin="8,0,0,0"/>
+                            <TextBlock x:Name="AutoSellText" Text="自动卖出：不自动卖出"
+                                       VerticalAlignment="Center"/>
+                        </DockPanel>
+                    </StackPanel>
+
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <GroupBox Grid.Column="0" Header="本城作坊" Padding="6">
+                            <DataGrid x:Name="WorkshopGrid" AutoGenerateColumns="False" IsReadOnly="True"
+                                      HeadersVisibility="Column" CanUserAddRows="False" SelectionMode="Single"
+                                      GridLinesVisibility="Horizontal"
+                                      SelectionChanged="WorkshopGrid_SelectionChanged">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="货物" Binding="{Binding Name}" Width="*"/>
+                                    <DataGridTextColumn Header="分类" Binding="{Binding Category}" Width="60"/>
+                                    <DataGridTextColumn Header="配方" Binding="{Binding Recipe}" Width="130"/>
+                                    <DataGridTextColumn Header="原料库存" Binding="{Binding InputStock}" Width="110"/>
+                                    <DataGridTextColumn Header="供给方式" Binding="{Binding Supply}" Width="120"/>
+                                    <DataGridTextColumn Header="日产" Binding="{Binding DailyOutput}" Width="50"/>
+                                    <DataGridTextColumn Header="建造日" Binding="{Binding BuiltDay}" Width="60"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+
+                        <GroupBox Grid.Column="2" Header="仓库库存（从这里取货）" Padding="6">
+                            <DataGrid x:Name="WarehouseGrid" AutoGenerateColumns="False" IsReadOnly="True"
+                                      HeadersVisibility="Column" CanUserAddRows="False" SelectionMode="Single"
+                                      GridLinesVisibility="Horizontal">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="货物" Binding="{Binding Name}" Width="*"/>
+                                    <DataGridTextColumn Header="数量" Binding="{Binding Quantity}" Width="70"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+                    </Grid>
+
+                    <StackPanel Grid.Row="3" Margin="0,8,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="建造作坊（选下方列表）" Width="170" Click="BuildWorkshopButton_Click"/>
+                            <Button Content="卸货：舱内选中 → 仓库" Width="180" Margin="8,0,0,0"
+                                    Click="StoreToWarehouseButton_Click"/>
+                            <Button Content="取货：仓库选中 → 舱内" Width="180" Margin="8,0,0,0"
+                                    Click="TakeFromWarehouseButton_Click"/>
+                            <TextBlock Text="数量取左侧数量框" Foreground="Gray"
+                                       VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button x:Name="StoreAllButton" Content="全部卸货（舱内所有货）" Width="180"
+                                    Click="StoreAllToWarehouseButton_Click"/>
+                            <Button x:Name="TakeAllButton" Content="全部取货（仓库所有货）" Width="180"
+                                    Margin="8,0,0,0" Click="TakeAllFromWarehouseButton_Click"/>
+                            <Button Content="产业与仓库总览" Width="150" Margin="8,0,0,0"
+                                    Click="IndustryOverviewButton_Click"/>
+                        </StackPanel>
+                        <DockPanel Margin="0,8,0,0">
+                            <Button x:Name="SupplyApplyButton" DockPanel.Dock="Right" Width="80"
+                                    Content="应用" Margin="8,0,0,0" Click="SupplyApplyButton_Click"/>
+                            <TextBox x:Name="SupplyLimitBox" DockPanel.Dock="Right" Width="70"
+                                     Margin="8,0,0,0" Text="200"/>
+                            <ComboBox x:Name="SupplyModeBox" DockPanel.Dock="Right" Width="150"
+                                      Margin="8,0,0,0"/>
+                            <TextBlock x:Name="SupplyText" Text="作坊供给：请选中上方一座加工品/成品作坊"
+                                       VerticalAlignment="Center"/>
+                        </DockPanel>
+                    </StackPanel>
+
+                    <GroupBox Grid.Row="4" Header="可建作坊（本城盛产且已达城市规模）" Margin="0,8,0,0" Padding="6">
+                        <DataGrid x:Name="BuildableGrid" AutoGenerateColumns="False" IsReadOnly="True"
+                                  HeadersVisibility="Column" CanUserAddRows="False" SelectionMode="Single"
+                                  GridLinesVisibility="Horizontal">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="货物" Binding="{Binding Name}" Width="*"/>
+                                <DataGridTextColumn Header="分类" Binding="{Binding Category}" Width="70"/>
+                                <DataGridTextColumn Header="配方" Binding="{Binding Recipe}" Width="150"/>
+                                <DataGridTextColumn Header="等级" Binding="{Binding Tier}" Width="50"/>
+                                <DataGridTextColumn Header="日产" Binding="{Binding DailyOutput}" Width="50"/>
+                                <DataGridTextColumn Header="已建" Binding="{Binding Built}" Width="50"/>
+                                <DataGridTextColumn Header="造价" Binding="{Binding Cost}" Width="70"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </GroupBox>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>

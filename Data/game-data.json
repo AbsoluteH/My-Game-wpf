@@ -1,0 +1,189 @@
+﻿{
+  "goods": [
+    { "id": "clay", "name": "黏土", "basePrice": 18, "tier": 1, "reputationTier": 0, "category": "raw", "inputs": [], "origins": ["科隆", "巴黎"] },
+    { "id": "grape", "name": "葡萄", "basePrice": 22, "tier": 1, "reputationTier": 0, "category": "raw", "inputs": [], "origins": ["波尔多", "巴黎", "里斯本", "塞维利亚"] },
+    { "id": "grain", "name": "谷物", "basePrice": 25, "tier": 1, "reputationTier": 0, "category": "raw", "inputs": [], "origins": ["巴黎", "科隆"] },
+    { "id": "hide", "name": "生皮", "basePrice": 28, "tier": 1, "reputationTier": 0, "category": "raw", "inputs": [], "origins": ["伦敦", "汉堡", "里昂"] },
+    { "id": "salt", "name": "盐", "basePrice": 30, "tier": 1, "reputationTier": 0, "category": "raw", "inputs": [], "origins": ["威尼斯", "波尔多", "塞维利亚"] },
+    { "id": "ore", "name": "矿石", "basePrice": 30, "tier": 1, "reputationTier": 0, "category": "raw", "inputs": [], "origins": ["科隆", "米兰"] },
+    { "id": "flax", "name": "亚麻", "basePrice": 32, "tier": 1, "reputationTier": 0, "category": "raw", "inputs": [], "origins": ["里昂", "布鲁日"] },
+    { "id": "fish", "name": "咸鱼", "basePrice": 35, "tier": 1, "reputationTier": 0, "category": "raw", "inputs": [], "origins": ["伦敦", "布鲁日", "汉堡", "里斯本"] },
+    { "id": "sand", "name": "砂石", "basePrice": 40, "tier": 1, "reputationTier": 0, "category": "raw", "inputs": [], "origins": ["威尼斯", "米兰"] },
+    { "id": "wool", "name": "羊毛", "basePrice": 40, "tier": 1, "reputationTier": 0, "category": "raw", "inputs": [], "origins": ["伦敦", "米兰", "塞维利亚"] },
+    { "id": "honey", "name": "蜂蜜", "basePrice": 45, "tier": 1, "reputationTier": 0, "category": "raw", "inputs": [], "origins": ["巴黎", "里昂", "波尔多"] },
+    { "id": "timber", "name": "木材", "basePrice": 50, "tier": 1, "reputationTier": 0, "category": "raw", "inputs": [], "origins": ["科隆", "汉堡"] },
+    { "id": "pottery", "name": "陶器", "basePrice": 55, "tier": 1, "reputationTier": 0, "category": "processed", "inputs": [{ "id": "clay", "quantity": 2 }], "origins": ["科隆", "米兰"] },
+    { "id": "beer", "name": "啤酒", "basePrice": 60, "tier": 1, "reputationTier": 0, "category": "processed", "inputs": [{ "id": "grain", "quantity": 2 }], "origins": ["科隆", "汉堡"] },
+    { "id": "wine", "name": "葡萄酒", "basePrice": 70, "tier": 1, "reputationTier": 0, "category": "processed", "inputs": [{ "id": "grape", "quantity": 2 }], "origins": ["巴黎", "波尔多", "里斯本"] },
+    { "id": "leather", "name": "皮革", "basePrice": 85, "tier": 1, "reputationTier": 0, "category": "processed", "inputs": [{ "id": "hide", "quantity": 2 }], "origins": ["伦敦", "科隆"] },
+    { "id": "cloth", "name": "布匹", "basePrice": 95, "tier": 1, "reputationTier": 0, "category": "processed", "inputs": [{ "id": "wool", "quantity": 2 }], "origins": ["布鲁日", "米兰", "巴塞罗那"] },
+
+    { "id": "iron", "name": "铁器", "basePrice": 110, "tier": 2, "reputationTier": 0, "category": "processed", "inputs": [{ "id": "ore", "quantity": 2 }], "origins": ["科隆", "米兰"] },
+    { "id": "linen", "name": "亚麻布", "basePrice": 115, "tier": 2, "reputationTier": 0, "category": "processed", "inputs": [{ "id": "flax", "quantity": 2 }], "origins": ["汉堡", "里昂", "布鲁日"] },
+    { "id": "copper", "name": "铜器", "basePrice": 120, "tier": 2, "reputationTier": 2, "category": "processed", "inputs": [{ "id": "ore", "quantity": 2 }], "origins": ["科隆", "米兰"] },
+    { "id": "paper", "name": "纸张", "basePrice": 130, "tier": 2, "reputationTier": 0, "category": "processed", "inputs": [{ "id": "timber", "quantity": 2 }], "origins": ["巴黎", "科隆"] },
+    { "id": "glass", "name": "玻璃", "basePrice": 140, "tier": 2, "reputationTier": 0, "category": "processed", "inputs": [{ "id": "sand", "quantity": 2 }], "origins": ["威尼斯"] },
+    { "id": "soap", "name": "肥皂", "basePrice": 150, "tier": 2, "reputationTier": 0, "category": "processed", "inputs": [{ "id": "honey", "quantity": 1 }, { "id": "timber", "quantity": 1 }], "origins": ["伦敦", "布鲁日"] },
+    { "id": "spice", "name": "香料", "basePrice": 160, "tier": 2, "reputationTier": 0, "category": "imported", "inputs": [], "origins": ["威尼斯", "君士坦丁堡", "里斯本"] },
+    { "id": "pewter", "name": "锡器", "basePrice": 175, "tier": 2, "reputationTier": 0, "category": "finished", "inputs": [{ "id": "copper", "quantity": 1 }], "origins": ["布鲁日", "科隆"] },
+    { "id": "tapestry", "name": "挂毯", "basePrice": 210, "tier": 2, "reputationTier": 0, "category": "finished", "inputs": [{ "id": "cloth", "quantity": 1 }, { "id": "wool", "quantity": 1 }], "origins": ["布鲁日", "巴黎"] },
+
+    { "id": "furs", "name": "毛皮", "basePrice": 260, "tier": 3, "reputationTier": 0, "category": "raw", "inputs": [], "origins": ["科隆", "汉堡"] },
+    { "id": "amber", "name": "琥珀", "basePrice": 300, "tier": 3, "reputationTier": 0, "category": "raw", "inputs": [], "origins": ["布鲁日", "汉堡"] },
+    { "id": "silk", "name": "丝绸", "basePrice": 340, "tier": 3, "reputationTier": 3, "category": "imported", "inputs": [], "origins": ["威尼斯", "君士坦丁堡"] },
+    { "id": "perfume", "name": "香水", "basePrice": 380, "tier": 3, "reputationTier": 0, "category": "finished", "inputs": [{ "id": "spice", "quantity": 1 }, { "id": "glass", "quantity": 1 }], "origins": ["威尼斯", "米兰", "巴黎"] },
+    { "id": "ivory", "name": "象牙", "basePrice": 420, "tier": 3, "reputationTier": 2, "category": "imported", "inputs": [], "origins": ["威尼斯", "君士坦丁堡"] },
+    { "id": "pearl", "name": "珍珠", "basePrice": 460, "tier": 3, "reputationTier": 3, "category": "imported", "inputs": [], "origins": ["威尼斯", "巴塞罗那"] },
+    { "id": "gem", "name": "宝石", "basePrice": 480, "tier": 3, "reputationTier": 3, "category": "imported", "inputs": [], "origins": ["布鲁日", "塞维利亚"] }
+  ],
+
+  "cities": [
+    {
+      "name": "伦敦", "x": 0, "y": 0, "isPort": true,
+      "multipliers": {
+        "grape": 0.8, "clay": 0.8, "hide": 1.3, "ore": 0.8, "fish": 1.5,
+        "wool": 1.8, "pottery": 0.8, "beer": 0.8, "leather": 1.3, "cloth": 1.15,
+        "iron": 0.9, "linen": 1.3, "copper": 0.95, "paper": 0.9, "glass": 0.9,
+        "soap": 1.5, "spice": 0.7, "pewter": 0.85, "tapestry": 0.95, "furs": 0.7,
+        "amber": 0.85, "silk": 0.6, "perfume": 0.6, "ivory": 0.65, "pearl": 0.7,
+        "gem": 0.85
+      }
+    },
+    {
+      "name": "布鲁日", "x": 90, "y": 25, "isPort": true,
+      "multipliers": {
+        "grape": 0.85, "clay": 0.85, "ore": 0.85, "flax": 1.4, "fish": 1.4,
+        "sand": 0.8, "wool": 0.8, "pottery": 0.9, "beer": 0.85, "cloth": 1.8,
+        "iron": 0.95, "linen": 1.6, "copper": 0.9, "paper": 0.9, "glass": 0.8,
+        "soap": 1.3, "spice": 0.8, "pewter": 1.5, "tapestry": 2.0, "furs": 0.9,
+        "amber": 1.7, "silk": 0.75, "perfume": 0.7, "ivory": 0.7, "pearl": 0.9,
+        "gem": 1.9
+      }
+    },
+    {
+      "name": "巴黎", "x": 60, "y": 90, "isPort": false,
+      "multipliers": {
+        "grain": 1.7, "grape": 1.4, "clay": 1.4, "salt": 0.75, "flax": 1.2,
+        "fish": 0.75, "wool": 0.85, "honey": 1.5, "pottery": 1.25, "wine": 1.8,
+        "iron": 1.1, "linen": 1.25, "copper": 1.1, "paper": 1.5, "glass": 0.85,
+        "soap": 1.25, "spice": 0.55, "pewter": 1.1, "tapestry": 1.7, "furs": 0.8,
+        "amber": 0.85, "silk": 0.55, "perfume": 1.25, "ivory": 0.55, "pearl": 0.6,
+        "gem": 0.6
+      }
+    },
+    {
+      "name": "科隆", "x": 155, "y": 50, "isPort": false,
+      "multipliers": {
+        "grain": 1.25, "clay": 1.5, "salt": 0.8, "ore": 1.6, "wool": 0.8,
+        "timber": 1.6, "pottery": 1.5, "beer": 1.9, "wine": 1.25, "leather": 1.3,
+        "iron": 1.8, "linen": 1.2, "copper": 1.7, "paper": 1.3, "glass": 0.95,
+        "soap": 1.1, "spice": 0.55, "pewter": 1.2, "tapestry": 1.1, "furs": 1.8,
+        "amber": 0.9, "silk": 0.55, "perfume": 1.0, "ivory": 0.55, "pearl": 0.6,
+        "gem": 0.6
+      }
+    },
+    {
+      "name": "威尼斯", "x": 250, "y": 190, "isPort": true,
+      "multipliers": {
+        "grain": 0.8, "clay": 0.8, "hide": 0.8, "salt": 1.7, "fish": 1.2,
+        "sand": 1.7, "honey": 0.75, "timber": 0.7, "beer": 0.7, "leather": 0.8,
+        "iron": 0.95, "linen": 0.85, "copper": 0.95, "paper": 0.9, "glass": 1.9,
+        "soap": 0.8, "spice": 1.5, "pewter": 0.9, "tapestry": 0.95, "furs": 0.75,
+        "amber": 1.1, "silk": 1.4, "perfume": 1.6, "ivory": 2.0, "pearl": 1.8,
+        "gem": 1.5
+      }
+    },
+    {
+      "name": "汉堡", "x": 175, "y": -10, "isPort": true,
+      "multipliers": {
+        "grape": 0.8, "hide": 1.4, "salt": 0.8, "flax": 1.2, "fish": 1.7,
+        "sand": 0.8, "timber": 1.4, "beer": 1.5, "wine": 0.7, "cloth": 0.85,
+        "iron": 0.85, "linen": 1.5, "copper": 0.85, "paper": 0.85, "glass": 0.75,
+        "soap": 0.9, "spice": 0.75, "pewter": 0.95, "tapestry": 0.8, "furs": 1.3,
+        "amber": 1.35, "silk": 0.6, "perfume": 0.7, "ivory": 0.7, "pearl": 0.7,
+        "gem": 0.8
+      }
+    },
+    {
+      "name": "里昂", "x": 105, "y": 150, "isPort": false,
+      "multipliers": {
+        "grape": 1.2, "clay": 1.1, "hide": 1.4, "salt": 0.8, "flax": 1.6,
+        "honey": 1.6, "pottery": 1.3, "wine": 1.3, "leather": 1.2, "cloth": 1.3,
+        "iron": 1.1, "linen": 1.6, "copper": 1.1, "paper": 1.1, "glass": 1.0,
+        "soap": 1.2, "spice": 0.55, "pewter": 1.2, "tapestry": 1.3, "furs": 0.85,
+        "amber": 0.9, "silk": 0.6, "perfume": 0.9, "ivory": 0.6, "pearl": 0.6,
+        "gem": 0.65
+      }
+    },
+    {
+      "name": "米兰", "x": 200, "y": 150, "isPort": false,
+      "multipliers": {
+        "clay": 1.3, "ore": 1.5, "flax": 1.2, "fish": 0.8, "sand": 1.6,
+        "wool": 1.3, "timber": 0.8, "pottery": 1.3, "leather": 1.2, "cloth": 1.4,
+        "iron": 1.5, "linen": 1.3, "copper": 1.4, "paper": 1.1, "glass": 0.95,
+        "soap": 1.1, "spice": 0.55, "pewter": 1.2, "tapestry": 1.3, "furs": 0.85,
+        "amber": 0.85, "silk": 0.6, "perfume": 1.3, "ivory": 0.55, "pearl": 0.6,
+        "gem": 0.7
+      }
+    },
+    {
+      "name": "波尔多", "x": 15, "y": 135, "isPort": true,
+      "multipliers": {
+        "grape": 1.8, "salt": 1.4, "ore": 0.85, "fish": 1.1, "sand": 0.8,
+        "honey": 1.3, "beer": 0.8, "wine": 1.85, "leather": 0.85, "cloth": 0.85,
+        "iron": 0.85, "linen": 0.9, "copper": 0.85, "paper": 0.9, "glass": 0.75,
+        "soap": 0.9, "spice": 0.8, "pewter": 0.9, "tapestry": 0.85, "furs": 0.9,
+        "amber": 0.85, "silk": 0.7, "perfume": 1.0, "ivory": 0.7, "pearl": 0.7,
+        "gem": 0.8
+      }
+    },
+    {
+      "name": "里斯本", "x": -30, "y": 165, "isPort": true,
+      "multipliers": {
+        "grain": 0.9, "grape": 1.5, "clay": 0.85, "flax": 0.85, "fish": 1.6,
+        "sand": 0.85, "timber": 0.85, "pottery": 0.9, "beer": 0.85, "wine": 1.5,
+        "iron": 0.85, "linen": 0.9, "copper": 0.85, "paper": 0.9, "glass": 0.85,
+        "soap": 0.95, "spice": 1.4, "pewter": 0.9, "tapestry": 0.9, "furs": 0.8,
+        "amber": 0.9, "silk": 0.9, "perfume": 0.8, "ivory": 0.9, "pearl": 0.9,
+        "gem": 0.9
+      }
+    },
+    {
+      "name": "塞维利亚", "x": 0, "y": 200, "isPort": true,
+      "multipliers": {
+        "grape": 1.4, "salt": 1.4, "ore": 0.9, "flax": 0.8, "sand": 0.85,
+        "wool": 1.5, "honey": 0.9, "timber": 0.8, "beer": 0.85, "wine": 1.2,
+        "iron": 0.85, "linen": 0.85, "copper": 0.85, "paper": 0.9, "glass": 0.9,
+        "soap": 0.9, "spice": 0.9, "pewter": 0.9, "tapestry": 0.9, "furs": 0.85,
+        "amber": 0.9, "silk": 0.9, "perfume": 0.75, "ivory": 0.85, "pearl": 0.85,
+        "gem": 1.4
+      }
+    },
+    {
+      "name": "巴塞罗那", "x": 120, "y": 215, "isPort": true,
+      "multipliers": {
+        "clay": 0.9, "hide": 0.9, "ore": 0.9, "sand": 0.9, "wool": 1.2,
+        "honey": 0.9, "timber": 0.85, "beer": 0.9, "wine": 1.1, "cloth": 1.5,
+        "iron": 0.9, "linen": 0.95, "copper": 0.9, "paper": 0.9, "glass": 0.9,
+        "soap": 0.9, "spice": 0.85, "pewter": 0.95, "tapestry": 0.95, "furs": 0.85,
+        "amber": 0.9, "silk": 0.9, "perfume": 0.8, "ivory": 0.85, "pearl": 1.4,
+        "gem": 0.95
+      }
+    },
+    {
+      "name": "君士坦丁堡", "x": 330, "y": 230, "isPort": true,
+      "multipliers": {
+        "clay": 0.85, "hide": 0.85, "ore": 0.85, "flax": 0.85, "sand": 0.85,
+        "wool": 0.9, "timber": 0.8, "pottery": 0.9, "beer": 0.85, "wine": 0.9,
+        "iron": 0.9, "linen": 0.85, "copper": 0.9, "paper": 0.9, "glass": 1.1,
+        "soap": 0.9, "spice": 1.5, "pewter": 0.9, "tapestry": 1.1, "furs": 0.85,
+        "amber": 0.9, "silk": 1.6, "perfume": 0.9, "ivory": 1.6, "pearl": 0.95,
+        "gem": 1.0
+      }
+    }
+  ],
+
+  "balance": {
+    "cityLevelThresholds": [0, 6000, 18000]
+  }
+}

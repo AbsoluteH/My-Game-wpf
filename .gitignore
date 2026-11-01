@@ -1,0 +1,43 @@
+# ---- .NET / WPF 构建产物 ----
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.dll
+*.exe
+*.pdb
+*.cache
+*.tlog
+*.lastbuildstate
+
+# ---- Visual Studio ----
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.dbmdl
+*.psess
+*.vsp
+*.vspx
+*.VC.db
+*.opendb
+*.log
+
+# ---- NuGet ----
+packages/
+*.nupkg
+*.snupkg
+project.assets.json
+project.nuget.cache
+
+# ---- 系统临时文件 ----
+*.tmp
+*.bak
+Thumbs.db
+desktop.ini
+
+# ---- Trae / 编辑器本地配置（如含个人路径或凭据不要提交）----
+.trae/
+.idea/
