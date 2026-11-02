@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using TradeGame.Data;
 using TradeGame.Entities;
+using TradeGame.Events;
 using TradeGame.Services;
 using TradeGame.Strategies;
 
@@ -30,10 +31,12 @@ public sealed class TradeGameEngine
     public TradeGameEngine()
     {
         Goods = GameData.CreateGoods();
-        Cities = GameData.CreateCities();
+        Nations = GameData.CreateNations();
+        Cities = GameData.CreateCities(Nations);
         GameData.InitializeMarkets(Cities, Goods);
 
-        Player = new Player(Cities[0]);
+        GameEvents = new GameEventBus();
+        Player = new Player(Cities[0], GameEvents);
         Pricing = new SupplyDemandPricingStrategy();
 
         // 先生成开局价格：行会任务生成时要按实际行情估价，所以必须在创建行会服务之前完成
@@ -42,17 +45,24 @@ public sealed class TradeGameEngine
             Pricing.UpdatePrices(city, Goods);
         }
 
-        Market = new MarketService(Player, Pricing, Goods);
-        Events = new MarketEventService(Cities, Goods, Pricing);
-        Industry = new IndustryService(Player, Cities, Goods, Market);
+        Market = new MarketService(Player, Pricing, Goods, GameEvents);
+        Events = new MarketEventService(Cities, Goods, Pricing, GameEvents);
+        Industry = new IndustryService(Player, Cities, Goods, Market, GameEvents);
+        Home = new HomeService(Player, Cities, Goods, Industry);
 
-        // 旅行时每推进一天都会驱动行情事件（到期恢复原价、按排期生成新波动）与产业产出
-        TravelService = new TravelService(Player, Cities, Goods, Pricing, day =>
-        {
-            Events.AdvanceTo(day);
-            Industry.AdvanceTo(day);
-        });
-        Guild = new GuildService(Player, Cities, Goods, Pricing);
+        // 每推进一天由事件总线驱动行情事件（到期恢复原价、按排期生成新波动）与产业产出
+        TravelService = new TravelService(Player, Cities, Goods, Pricing, GameEvents);
+        GameEvents.Subscribe<NewDayEvent>(OnNewDay);
+
+        Guild = new GuildService(Player, Cities, Goods, Pricing, GameEvents);
+        NationMissions = new NationService(Player, Nations, Cities, Goods, Pricing, GameEvents);
+
+        // 城市升级与到站会牵动行会挂牌，由引擎统一接到事件上
+        GameEvents.Subscribe<CityLevelUpEvent>(OnCityLevelUp);
+        GameEvents.Subscribe<ArrivedAtCityEvent>(OnArrivedAtCity);
+
+        // 国家好感升级后按新档位刷新该国的国家任务
+        GameEvents.Subscribe<NationFavorLevelUpEvent>(OnNationFavorLevelUp);
     }
 
     /// <summary>玩家商队实体（金币、载重、货物、天数、所在城市）。</summary>
@@ -70,14 +80,27 @@ public sealed class TradeGameEngine
     /// <summary>行会服务：各城任务发布、接受与交付。</summary>
     public GuildService Guild { get; }
 
+    /// <summary>国家服务：各国好感与国家级任务。</summary>
+    public NationService NationMissions { get; }
+
     /// <summary>随机行情事件服务：某城某货不定期暴涨/大跌，消息可在酒馆打听。</summary>
     public MarketEventService Events { get; }
 
     /// <summary>产业服务：各城作坊、作坊产出与本城仓库。</summary>
     public IndustryService Industry { get; }
 
+    /// <summary>家园服务：各城房产的购置、升级与房产存储。</summary>
+    public HomeService Home { get; }
+
+    /// <summary>
+    /// 游戏事件总线：买入、新的一天等事件在这里广播。
+    /// 界面可直接订阅，未来迁 Godot 时也可按同名事件接线，无需改动核心层。
+    /// </summary>
+    public GameEventBus GameEvents { get; }
+
     public IReadOnlyList<Good> Goods { get; }
     public IReadOnlyList<City> Cities { get; }
+    public IReadOnlyList<Nation> Nations { get; }
 
     // ---------- 以下为界面直接使用的便捷属性/方法，转发给内部实体与服务 ----------
 
@@ -106,6 +129,19 @@ public sealed class TradeGameEngine
 
     /// <summary>当前城市升到下一声望等级所需累计声望（满级时为 0）。</summary>
     public int CityReputationNeeded => Player.ReputationNeeded(CurrentCity);
+
+    /// <summary>当前城市所属国家。</summary>
+    public Nation CurrentNation => CurrentCity.Nation;
+
+    /// <summary>玩家在当前国家的累计好感。</summary>
+    public int NationFavor => Player.NationFavor(CurrentNation);
+
+    /// <summary>玩家在当前国家的好感等级 0-3；0 级表示尚未与该国建立关系。</summary>
+    public int NationFavorLevel => Player.NationFavorLevel(CurrentNation);
+
+    /// <summary>当前国家升到下一好感等级所需累计好感（满级时为 0）。</summary>
+    public int NationFavorNeeded => Player.NationFavorNeeded(CurrentNation);
+
 
     /// <summary>当前城市市场里可以买入的商品：本地经营、城市等级与玩家声望都达标。</summary>
     public IReadOnlyList<Good> TradeableGoods => Goods
@@ -144,48 +180,43 @@ public sealed class TradeGameEngine
     /// <summary>某货物的持仓平均买入成本，用于背包展示。</summary>
     public int AverageCost(Good good) => Player.AverageCost(good.Id);
 
-    public bool Buy(Good good, int quantity, out string message) => Market.Buy(good, quantity, out message);
+    /// <summary>买入货物；国家好感在交易中累积，升级后的提示在这里拼回消息。</summary>
+    public bool Buy(Good good, int quantity, out string message)
+    {
+        bool ok = Market.Buy(good, quantity, out message);
+        if (ok)
+        {
+            message += DrainPendingNews();
+        }
+
+        return ok;
+    }
 
     /// <summary>
     /// 卖出货物。卖出会累积城市繁荣度，可能让城市当场升级；
-    /// 升级后立即换掉该城行会里还没被接走的旧任务，按新等级重新发布。
+    /// 升级后行会挂牌由 CityLevelUpEvent 订阅方刷新，这里只负责把提示拼回消息。
     /// </summary>
     public bool Sell(Good good, int quantity, out string message)
     {
-        int oldLevel = CurrentCity.Level;
         bool ok = Market.Sell(good, quantity, out message);
         if (!ok)
         {
             return false;
         }
 
-        if (CurrentCity.Level > oldLevel)
-        {
-            string guildNews = Guild.RefreshCity(CurrentCity, Player.Day);
-            if (guildNews.Length > 0)
-            {
-                message += "；" + guildNews;
-            }
-        }
-
+        message += DrainPendingNews();
         return true;
     }
 
     public int TravelCost(City destination) => TravelService.TravelCost(destination);
 
-    /// <summary>旅行：成功抵达后推进行会任务（作废过期任务、刷新到期委托）。</summary>
+    /// <summary>旅行：成功抵达后由 ArrivedAtCityEvent 刷新行会，并汇总当天的产业报表。</summary>
     public bool Travel(City destination, out string message)
     {
         bool ok = TravelService.Travel(destination, out message);
         if (!ok)
         {
             return false;
-        }
-
-        string guildNews = Guild.AdvanceTo(Player.Day);
-        if (guildNews.Length > 0)
-        {
-            message += "；" + guildNews;
         }
 
         // 旅途中的作坊产出汇总到旅行提示里
@@ -195,20 +226,33 @@ public sealed class TradeGameEngine
             message += "；" + industryNews;
         }
 
+        // 到站时的行会刷新、旅途中自动卖出促成的城市升级，都由事件订阅方写入待提示队列
+        message += DrainPendingNews();
         return true;
     }
 
     /// <summary>当前城市行会发布的任务。</summary>
     public IReadOnlyList<GuildMission> CurrentGuildOffers => Guild.Offers(CurrentCity);
 
-    /// <summary>玩家已接受的所有行会任务。</summary>
-    public IReadOnlyList<GuildMission> ActiveMissions => Guild.ActiveMissions;
+    /// <summary>当前国家挂牌的国家任务（该国所有城市共享同一份）。</summary>
+    public IReadOnlyList<GuildMission> CurrentNationOffers => NationMissions.Offers(CurrentNation);
 
+    /// <summary>玩家已接受的所有任务（行会任务 + 国家任务）。</summary>
+    public IReadOnlyList<GuildMission> ActiveMissions =>
+        Guild.ActiveMissions.Concat(NationMissions.ActiveMissions).ToList();
+
+    /// <summary>接受任务：按类型分发给行会服务或国家服务。</summary>
     public bool AcceptMission(GuildMission mission, out string message) =>
-        Guild.Accept(mission, out message);
+        mission.Type == GuildMissionType.Nation
+            ? NationMissions.Accept(mission, out message)
+            : Guild.Accept(mission, out message);
 
+    /// <summary>交付任务：按类型分发给行会服务或国家服务。</summary>
     public bool DeliverMission(GuildMission mission, out string message) =>
-        Guild.Deliver(mission, out message);
+        mission.Type == GuildMissionType.Nation
+            ? NationMissions.Deliver(mission, out message)
+            : Guild.Deliver(mission, out message);
+
 
     // ---------- 酒馆与行情事件 ----------
 
@@ -246,7 +290,7 @@ public sealed class TradeGameEngine
             return false;
         }
 
-        Player.Spend(TavernCost);
+        Player.Spend(TavernCost, GoldChangeReason.Tavern);
         MarketEvent? ev = Events.Reveal(CurrentCity);
         message = ev == null
             ? $"花了 {TavernCost} 金币，却什么都没打听到。"
@@ -274,7 +318,7 @@ public sealed class TradeGameEngine
         }
 
         int oldLevel = city.Level;
-        Player.Spend(InvestCost);
+        Player.Spend(InvestCost, GoldChangeReason.CityInvestment);
         city.AddProsperity(InvestProsperity);
 
         message = $"向 {city.Name} 投资 {InvestCost} 金币，繁荣 +{InvestProsperity}";
@@ -292,14 +336,11 @@ public sealed class TradeGameEngine
                 ? $"（升到 Lv{city.Level}，解锁 {unlocks}）"
                 : $"（升到 Lv{city.Level}）";
 
-            // 城市升级后行会立即换新：撤下旧任务，按新等级重新发布
-            string guildNews = Guild.RefreshCity(city, Player.Day);
-            if (guildNews.Length > 0)
-            {
-                message += "；" + guildNews;
-            }
+            // 行会刷新由 CityLevelUpEvent 订阅方处理
+            GameEvents.Publish(new CityLevelUpEvent(city, oldLevel, city.Level, Player.Day));
         }
 
+        message += DrainPendingNews();
         return true;
     }
 
@@ -337,7 +378,7 @@ public sealed class TradeGameEngine
         }
 
         int oldCapacity = Player.Capacity;
-        Player.Spend(cost);
+        Player.Spend(cost, GoldChangeReason.CaravanExpansion);
         Player.ExpandCapacity(ExpandCapacityUnit);
 
         message = $"商队扩容：花费 {cost} 金币，载重 {oldCapacity} → {Player.Capacity}";
@@ -419,10 +460,97 @@ public sealed class TradeGameEngine
     public bool SetAutoSell(City city, AutoSellMode mode, out string message) =>
         Industry.SetAutoSell(city, mode, out message);
 
+    // ---------- 家园：房产与房产存储 ----------
+
+    /// <summary>本城房产（可能尚未购置）。</summary>
+    public Estate Estate => Home.EstateOf(CurrentCity);
+
+    /// <summary>本城房产升到下一级的费用；已满级时为 0。</summary>
+    public int NextEstateCost => HomeService.NextCost(Estate);
+
+    /// <summary>购置或升级本城房产；需城市规模达到目标等级、金币充足。</summary>
+    public bool BuyEstate(out string message)
+    {
+        bool ok = Home.Buy(CurrentCity, out message);
+        if (ok)
+        {
+            message += DrainPendingNews();
+        }
+
+        return ok;
+    }
+
+    /// <summary>把舱内货物存进本城房产（与仓库容量各自独立）。</summary>
+    public bool StoreToEstate(Good good, int quantity, out string message) =>
+        Home.Store(CurrentCity, good, quantity, out message);
+
+    /// <summary>从本城房产取货装进船舱。</summary>
+    public bool TakeFromEstate(Good good, int quantity, out string message) =>
+        Home.Retrieve(CurrentCity, good, quantity, out message);
+
     /// <summary>作弊台：直接把金币设为指定值（负数按 0 处理），返回实际生效的金额。</summary>
     public int SetGold(int amount)
     {
-        Player.SetGold(amount);
+        Player.SetGold(amount, GoldChangeReason.Debug);
         return Player.Gold;
     }
+
+    /// <summary>新的一天：先由系统推进每日逻辑，其他订阅方随后处理自己的每日事务。</summary>
+    private void OnNewDay(NewDayEvent e)
+    {
+        Events.AdvanceTo(e.Day);
+        Industry.AdvanceTo(e.Day);
+    }
+
+    /// <summary>城市升级：立即换掉该城还没被接走的行会任务，按新等级重新发布。</summary>
+    private void OnCityLevelUp(CityLevelUpEvent e)
+    {
+        string news = Guild.RefreshCity(e.City, e.Day);
+        if (news.Length > 0)
+        {
+            _pendingNews.Add(news);
+        }
+    }
+
+    /// <summary>抵达城市：作废过期任务并处理到期的补货位置（行会与国家任务各自推进）。</summary>
+    private void OnArrivedAtCity(ArrivedAtCityEvent e)
+    {
+        string guildNews = Guild.AdvanceTo(e.Day);
+        if (guildNews.Length > 0)
+        {
+            _pendingNews.Add(guildNews);
+        }
+
+        string nationNews = NationMissions.AdvanceTo(e.Day);
+        if (nationNews.Length > 0)
+        {
+            _pendingNews.Add(nationNews);
+        }
+    }
+
+    /// <summary>国家好感升级：按新档位补齐该国的国家任务，并把新开放提示排进消息队列。</summary>
+    private void OnNationFavorLevelUp(NationFavorLevelUpEvent e)
+    {
+        string news = NationMissions.Refresh(e.Nation, e.Day);
+        if (news.Length > 0)
+        {
+            _pendingNews.Add(news);
+        }
+    }
+
+    /// <summary>事件订阅方产生的提示文本先入队，等当前操作结束后由门面拼进返回消息。</summary>
+    private string DrainPendingNews()
+    {
+        if (_pendingNews.Count == 0)
+        {
+            return "";
+        }
+
+        string news = "；" + string.Join("；", _pendingNews);
+        _pendingNews.Clear();
+        return news;
+    }
+
+    /// <summary>由事件订阅方写入、等待拼进操作提示的文本。</summary>
+    private readonly List<string> _pendingNews = new();
 }

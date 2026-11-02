@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using TradeGame.Entities;
+using TradeGame.Events;
 using TradeGame.Strategies;
 
 namespace TradeGame.Services;
@@ -39,17 +40,19 @@ public sealed class MarketEventService
     private readonly IReadOnlyList<City> _cities;
     private readonly IReadOnlyList<Good> _goods;
     private readonly IPricingStrategy _pricing;
+    private readonly GameEventBus _gameEvents;
     private readonly Random _rng;
 
     private int _nextSpawnDay;
     private int _nextId = 1;
 
     public MarketEventService(IReadOnlyList<City> cities, IReadOnlyList<Good> goods,
-                              IPricingStrategy pricing, Random? rng = null)
+                              IPricingStrategy pricing, GameEventBus gameEvents, Random? rng = null)
     {
         _cities = cities;
         _goods = goods;
         _pricing = pricing;
+        _gameEvents = gameEvents;
         _rng = rng ?? new Random();
         _nextSpawnDay = 3 + _rng.Next(0, 4);
     }
@@ -75,6 +78,10 @@ public sealed class MarketEventService
                 ev.City.EventMultipliers.Remove(ev.Good.Id);
                 ev.City.PriceFloors.Remove(ev.Good.Id);
                 _pricing.UpdatePrice(ev.City, ev.Good);
+
+                // 价格恢复常态后再广播结束事件，订阅方看到的是恢复后的状态
+                _gameEvents.Publish(new MarketShockEndedEvent(ev.Id, ev.City, ev.Good, ev.Kind,
+                                                              ev.Delta, ev.StartDay, ev.EndDay, day));
             }
         }
 
@@ -170,6 +177,9 @@ public sealed class MarketEventService
 
             _pricing.UpdatePrice(city, good);
             _active.Add(ev);
+
+            _gameEvents.Publish(new MarketShockStartedEvent(ev.Id, city, good, ev.Kind, ev.Delta,
+                                                            ev.StartDay, ev.EndDay, day));
             return true;
         }
 

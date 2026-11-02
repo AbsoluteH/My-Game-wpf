@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using TradeGame.Events;
 
 namespace TradeGame.Entities;
 
@@ -25,9 +26,10 @@ public sealed class Player
     /// <summary>各等级所需的累计声望：索引为当前等级，所以 Lv1 需 60、Lv2 需 200、Lv3 需 500。</summary>
     private static readonly int[] ReputationThresholds = { 0, 60, 200, 500 };
 
-    public Player(City startingCity)
+    public Player(City startingCity, GameEventBus gameEvents)
     {
         CurrentCity = startingCity;
+        _gameEvents = gameEvents;
     }
 
     /// <summary>所在城市，旅行成功后由旅行服务修改。</summary>
@@ -56,12 +58,42 @@ public sealed class Player
     /// <summary>剩余可装载单位数。</summary>
     public int FreeCapacity => Capacity - CargoUnits;
 
-    public void Spend(int amount) => Gold -= amount;
+    private readonly GameEventBus _gameEvents;
 
-    public void Earn(int amount) => Gold += amount;
+    public void Spend(int amount, GoldChangeReason reason)
+    {
+        if (amount > 0)
+        {
+            ChangeGold(-amount, reason);
+        }
+    }
+
+    public void Earn(int amount, GoldChangeReason reason)
+    {
+        if (amount > 0)
+        {
+            ChangeGold(amount, reason);
+        }
+    }
 
     /// <summary>直接把金币设为指定值（仅作弊台使用），负数按 0 处理。</summary>
-    public void SetGold(int amount) => Gold = Math.Max(0, amount);
+    public void SetGold(int amount, GoldChangeReason reason)
+    {
+        int before = Gold;
+        Gold = Math.Max(0, amount);
+        if (Gold != before)
+        {
+            _gameEvents.Publish(new GoldChangedEvent(Gold - before, before, Gold, reason, Day));
+        }
+    }
+
+    /// <summary>金币的唯一写入口：改完立刻广播，保证所有经济系统都能收到同一份通知。</summary>
+    private void ChangeGold(int delta, GoldChangeReason reason)
+    {
+        int before = Gold;
+        Gold += delta;
+        _gameEvents.Publish(new GoldChangedEvent(delta, before, Gold, reason, Day));
+    }
 
     /// <summary>
     /// 扩容商队载重，不超过 <see cref="MaxCapacity"/>。
@@ -158,6 +190,50 @@ public sealed class Player
 
         int oldLevel = ReputationLevel(city);
         _reputation[city.Name] = Reputation(city) + amount;
-        return ReputationLevel(city) > oldLevel;
+        int newLevel = ReputationLevel(city);
+
+        if (newLevel > oldLevel)
+        {
+            _gameEvents.Publish(new ReputationLevelUpEvent(city, oldLevel, newLevel, Reputation(city), Day));
+        }
+
+        return newLevel > oldLevel;
+    }
+
+    // ---------- 国家好感：按国家分别记录，来源是在该国城市贸易与完成国家任务 ----------
+
+    /// <summary>各国累计好感：key 为国家名。</summary>
+    private readonly Dictionary<string, int> _nationFavor = new();
+
+    /// <summary>玩家在某国的累计好感。</summary>
+    public int NationFavor(Nation nation) => _nationFavor.GetValueOrDefault(nation.Name);
+
+    /// <summary>玩家在某国的好感等级 0-3；0 级表示尚未与该国建立关系。</summary>
+    public int NationFavorLevel(Nation nation) => nation.LevelFor(NationFavor(nation));
+
+    /// <summary>升到下一级所需累计好感；已满级返回 0。</summary>
+    public int NationFavorNeeded(Nation nation) =>
+        NationFavorLevel(nation) < Nation.MaxLevel
+            ? nation.FavorThresholdFor(NationFavorLevel(nation) + 1)
+            : 0;
+
+    /// <summary>增加某国好感，返回本次是否升级（可连升多级）。</summary>
+    public bool AddNationFavor(Nation nation, int amount)
+    {
+        if (amount <= 0)
+        {
+            return false;
+        }
+
+        int oldLevel = NationFavorLevel(nation);
+        _nationFavor[nation.Name] = NationFavor(nation) + amount;
+        int newLevel = NationFavorLevel(nation);
+
+        if (newLevel > oldLevel)
+        {
+            _gameEvents.Publish(new NationFavorLevelUpEvent(nation, oldLevel, newLevel, NationFavor(nation), Day));
+        }
+
+        return newLevel > oldLevel;
     }
 }

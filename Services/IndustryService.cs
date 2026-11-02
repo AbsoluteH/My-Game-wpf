@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using TradeGame.Entities;
+using TradeGame.Events;
 
 namespace TradeGame.Services;
 
@@ -15,11 +16,19 @@ namespace TradeGame.Services;
 /// - 仓库每城一座，Lv1/2/3 容量 200/400/700，建造与升级分别花费 1500/3000/6000。
 /// - 仓库既存放作坊产出，也存放玩家从商队卸下的货物，所有货物共用容量；仓库满时作坊暂停生产。
 /// - 生产只在「天」推进时结算（目前只有旅行会推进天数），与行情事件、行会刷新同一节奏。
+/// - 建造/升级建筑会一次性给城市增加繁荣与玩家声望；仓库自动卖出也会给城市增加繁荣与声望，
+///   其贡献为玩家手动卖出的 80%。
 /// </summary>
 public sealed class IndustryService
 {
     /// <summary>每级城市规模提供的作坊位数量。</summary>
     public const int SlotsPerLevel = 2;
+
+    /// <summary>建造/升级建筑时，造价中有多少比例转化为城市繁荣度。</summary>
+    private const double BuildProsperityRate = 0.1;
+
+    /// <summary>建造/升级建筑时，每多少金币造价转化为 1 点本城声望。</summary>
+    private const int BuildCostPerReputation = 500;
 
     /// <summary>各等级作坊的造价：一级 3500、二级 7000、三级 12000。</summary>
     private static readonly int[] BuildCostsByTier = { 0, 3500, 7000, 12000 };
@@ -39,6 +48,9 @@ public sealed class IndustryService
     /// <summary>交易服务，自动卖出时按本城实时卖价成交并推低当地价格；市场采购原料也走它。</summary>
     private readonly MarketService _market;
 
+    /// <summary>游戏事件总线：建筑让城市升级时广播 <see cref="CityLevelUpEvent"/>，触发行会刷新等联动。</summary>
+    private readonly GameEventBus _gameEvents;
+
     /// <summary>各城已建作坊：key 为城市名。</summary>
     private readonly Dictionary<string, List<Workshop>> _workshops = new();
 
@@ -57,12 +69,14 @@ public sealed class IndustryService
     /// <summary>本次待汇报的自动卖出记录。</summary>
     private readonly List<string> _autoSellLog = new();
 
-    public IndustryService(Player player, IReadOnlyList<City> cities, IReadOnlyList<Good> goods, MarketService market)
+    public IndustryService(Player player, IReadOnlyList<City> cities, IReadOnlyList<Good> goods,
+                           MarketService market, GameEventBus gameEvents)
     {
         _player = player;
         _cities = cities;
         _goods = goods;
         _market = market;
+        _gameEvents = gameEvents;
         _goodById = goods.ToDictionary(g => g.Id);
 
         foreach (var city in cities)
@@ -143,11 +157,13 @@ public sealed class IndustryService
         }
 
         int cost = BuildCost(good);
-        _player.Spend(cost);
+        _player.Spend(cost, GoldChangeReason.IndustryInvestment);
         _workshops[city.Name].Add(new Workshop(good, _player.Day));
+        string reward = RewardCity(city, cost);
 
         message = $"在 {city.Name} 建成 {good.Name}作坊，花费 {cost} 金币，"
-                + $"日产 {Workshop.DailyOutputFor(good)} 件（作坊 {_workshops[city.Name].Count}/{MaxWorkshops(city)}）";
+                + $"日产 {Workshop.DailyOutputFor(good)} 件（作坊 {_workshops[city.Name].Count}/{MaxWorkshops(city)}）"
+                + reward;
         return true;
     }
 
@@ -170,13 +186,55 @@ public sealed class IndustryService
         }
 
         int oldCapacity = warehouse.Capacity;
-        _player.Spend(cost);
+        _player.Spend(cost, GoldChangeReason.IndustryInvestment);
         warehouse.Upgrade();
+        string reward = RewardCity(city, cost);
 
         message = warehouse.Level == 1
             ? $"在 {city.Name} 建成仓库，花费 {cost} 金币，容量 {warehouse.Capacity} 单位"
             : $"{city.Name} 仓库升到 Lv{warehouse.Level}，花费 {cost} 金币，容量 {oldCapacity} → {warehouse.Capacity} 单位";
+        message += reward;
         return true;
+    }
+
+    /// <summary>
+    /// 建造/升级建筑后给城市的一次性回报：繁荣 = 造价 ×10%，声望 = 造价 ÷500。
+    /// 如果因此让城市升级，广播 <see cref="CityLevelUpEvent"/> 并把新解锁的商品拼进提示。
+    /// 房产（<see cref="HomeService"/>）的购置与升级也复用这一份口径，避免两套规则。
+    /// </summary>
+    public string RewardCity(City city, int cost)
+    {
+        int prosperity = Math.Max(1, (int)Math.Round(cost * BuildProsperityRate));
+        int reputation = Math.Max(1, cost / BuildCostPerReputation);
+        int oldLevel = city.Level;
+
+        city.AddProsperity(prosperity);
+        bool reputationLeveled = _player.AddReputation(city, reputation);
+
+        string text = $"，{city.Name} 繁荣 +{prosperity}、声望 +{reputation}";
+
+        if (reputationLeveled)
+        {
+            text += $"（声望升到 Lv{_player.ReputationLevel(city)}）";
+        }
+
+        if (city.Level > oldLevel)
+        {
+            string unlocks = string.Join("、", _goods
+                .Where(g => city.SellsGood(g.Id)
+                            && g.Tier > oldLevel
+                            && g.Tier <= city.Level
+                            && g.ReputationTier <= _player.ReputationLevel(city))
+                .Select(g => g.Name));
+
+            text += unlocks.Length > 0
+                ? $"（城市升到 Lv{city.Level}，解锁 {unlocks}）"
+                : $"（城市升到 Lv{city.Level}）";
+
+            _gameEvents.Publish(new CityLevelUpEvent(city, oldLevel, city.Level, _player.Day));
+        }
+
+        return text;
     }
 
     /// <summary>把舱内货物卸进当前城市的仓库。</summary>
@@ -428,7 +486,7 @@ public sealed class IndustryService
                 continue;
             }
 
-            if (_market.SellToCity(city, good, quantity, out _))
+            if (_market.SellToCity(city, good, quantity, SaleSource.WarehouseAutoSell, out _))
             {
                 warehouse.Remove(good.Id, quantity);
                 sold.Add($"{good.Name} ×{quantity}");
@@ -538,26 +596,50 @@ public sealed class IndustryService
             return;
         }
 
-        // 先扣/买原料，再入库产出；兜底失败时不产出，避免凭空造货
+        // 先校验全部原料再统一扣/买：同种原料在配方里重复出现时按总量判断，
+        // 避免扣掉第一种原料后第二种不足，已花的钱和已消耗的货都白费
+        var required = new Dictionary<string, int>();
         foreach (var input in workshop.Good.Inputs)
         {
-            int needed = input.Quantity * possible;
-            Good inputGood = _goodById[input.GoodId];
+            required[input.GoodId] = required.GetValueOrDefault(input.GoodId) + input.Quantity * possible;
+        }
 
-            if (workshop.Supply == SupplyMode.SelfSupply)
-            {
-                if (warehouse.QuantityOf(inputGood.Id) < needed)
-                {
-                    _starved += target;
-                    return;
-                }
+        foreach (var (goodId, needed) in required)
+        {
+            int available = workshop.Supply == SupplyMode.SelfSupply
+                ? warehouse.QuantityOf(goodId)
+                : city.Stock[goodId];
 
-                warehouse.Remove(inputGood.Id, needed);
-            }
-            else if (!_market.BuyForIndustry(city, inputGood, needed, out _, out _))
+            if (available < needed)
             {
                 _starved += target;
                 return;
+            }
+        }
+
+        // 市场采购还要确认总价付得起，避免买了一半才发现金币不够
+        if (workshop.Supply == SupplyMode.MarketPurchase)
+        {
+            int quote = required.Sum(r => _market.EstimateBuyCost(city, _goodById[r.Key], r.Value));
+            if (_player.Gold < quote)
+            {
+                _starved += target;
+                return;
+            }
+        }
+
+        // 再扣/买原料，最后入库产出
+        foreach (var (goodId, needed) in required)
+        {
+            Good inputGood = _goodById[goodId];
+
+            if (workshop.Supply == SupplyMode.SelfSupply)
+            {
+                warehouse.Remove(inputGood.Id, needed);
+            }
+            else
+            {
+                _market.BuyForIndustry(city, inputGood, needed, out _, out _);
             }
         }
 

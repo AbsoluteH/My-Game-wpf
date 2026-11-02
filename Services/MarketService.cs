@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using TradeGame.Entities;
+using TradeGame.Events;
 using TradeGame.Strategies;
 
 namespace TradeGame.Services;
@@ -19,15 +20,30 @@ public sealed class MarketService
     /// <summary>每笔卖出货值中有多少比例转化为该城繁荣度（防止原地反复买卖刷繁荣）。</summary>
     private const double ProsperityRate = 0.03;
 
+    /// <summary>每笔卖出货值中有多少比例转化为玩家在该城的声望；仓库自动卖出按 0.8 倍。</summary>
+    private const double SaleReputationRate = 0.002;
+
+    /// <summary>仓库自动卖出对城市繁荣/声望的贡献，是玩家手动卖出的 80%。</summary>
+    private const double AutoSellContribution = 0.8;
+
+    /// <summary>每笔买卖货值中有多少比例转化为该城所属国家的国家好感。</summary>
+    private const double NationFavorRate = 0.0005;
+
+    /// <summary>单笔交易最多能涨多少国家好感，避免大宗单笔一次跳级。</summary>
+    private const int NationFavorCapPerTrade = 3;
+
     private readonly Player _player;
     private readonly IPricingStrategy _pricing;
     private readonly IReadOnlyList<Good> _goods;
+    private readonly GameEventBus _gameEvents;
 
-    public MarketService(Player player, IPricingStrategy pricing, IReadOnlyList<Good> goods)
+    public MarketService(Player player, IPricingStrategy pricing, IReadOnlyList<Good> goods,
+                         GameEventBus gameEvents)
     {
         _player = player;
         _pricing = pricing;
         _goods = goods;
+        _gameEvents = gameEvents;
     }
 
     /// <summary>当前城市的买入单价。</summary>
@@ -58,7 +74,7 @@ public sealed class MarketService
     public int MaxSellable(Good good) => _player.Cargo.GetValueOrDefault(good.Id);
 
     /// <summary>
-    /// 买入指定数量的货物。
+    /// 买入指定数量的货物。成功后广播 <see cref="PurchaseEvent"/>。
     /// </summary>
     /// <param name="message">返回给界面显示的提示文本。</param>
     public bool Buy(Good good, int quantity, out string message)
@@ -118,7 +134,7 @@ public sealed class MarketService
         int cost = _pricing.TotalBuyCost(city, good, quantity);
         int unitPrice = (int)Math.Round(cost / (double)quantity);
 
-        _player.Spend(cost);
+        _player.Spend(cost, GoldChangeReason.Purchase);
         _player.AddCargo(good.Id, quantity, unitPrice); // 记录成交均价，用于计算持仓平均成本
         city.Stock[good.Id] -= quantity; // 买走库存，当地供给变紧
         _pricing.UpdatePrice(city, good); // 只重算这一种货，其他货物价格保持不动
@@ -128,6 +144,12 @@ public sealed class MarketService
         {
             message += $"（买入会推高价格，数量从 {requested} 减到 {quantity}）";
         }
+
+        // 在本国城市贸易也累积国家好感，单笔上限 3 点
+        message += GainNationFavor(city, cost, 1.0);
+
+        // 成交后广播事件：任务计数、音效、表现层等订阅方从这里接入
+        _gameEvents.Publish(new PurchaseEvent(city, good, quantity, cost, _player.Gold, _player.Day));
 
         return true;
     }
@@ -178,7 +200,7 @@ public sealed class MarketService
             return false;
         }
 
-        if (!SellToCity(_player.CurrentCity, good, quantity, out message))
+        if (!SellToCity(_player.CurrentCity, good, quantity, SaleSource.Player, out message))
         {
             return false;
         }
@@ -191,8 +213,9 @@ public sealed class MarketService
     /// 把一批货直接卖给指定城市的市场，不要求玩家就在该城（仓库自动卖出走这条路径）。
     /// 调用方负责货物的来源与数量校验。
     /// 大额卖出会把本地价格压低，成交总收入按逐件递减核算（滑点），越卖越便宜。
+    /// 成功后广播 <see cref="SaleCompletedEvent"/>，用 source 区分玩家手动卖出与仓库自动卖出。
     /// </summary>
-    public bool SellToCity(City city, Good good, int quantity, out string message)
+    public bool SellToCity(City city, Good good, int quantity, SaleSource source, out string message)
     {
         if (quantity <= 0)
         {
@@ -203,12 +226,16 @@ public sealed class MarketService
         int income = _pricing.TotalSellIncome(city, good, quantity);
         int unitPrice = (int)Math.Round(income / (double)quantity);
 
-        _player.Earn(income);
+        _player.Earn(income, GoldChangeReason.Sale);
         city.Stock[good.Id] += quantity; // 卖入市场，当地供给变松
         _pricing.UpdatePrice(city, good); // 只重算这一种货，其他货物价格保持不动
 
         message = $"卖出 {good.Name} ×{quantity}，获得 {income} 金币，均价 {unitPrice}";
-        GrowCity(city, income, ref message); // 货物进入本地消费，城市因此繁荣
+        GrowCity(city, income, source == SaleSource.Player ? 1.0 : AutoSellContribution, ref message); // 货物进入本地消费，城市因此繁荣
+
+        _gameEvents.Publish(new SaleCompletedEvent(city, good, quantity, income,
+                                                  _player.Gold, _player.Day, source));
+
         return true;
     }
 
@@ -243,7 +270,7 @@ public sealed class MarketService
             return false;
         }
 
-        _player.Spend(total);
+        _player.Spend(total, GoldChangeReason.IndustryPurchase);
         city.Stock[good.Id] -= quantity; // 原料进入作坊，不再留在本地市场
         _pricing.UpdatePrice(city, good);
 
@@ -253,15 +280,29 @@ public sealed class MarketService
     }
 
     /// <summary>
-    /// 按成交货值给城市增加繁荣度，升级时把新解锁的商品名拼到提示文本后面。
+    /// 按成交货值给城市增加繁荣度与玩家声望（仓库自动卖出按 80% 计入），
+    /// 升级时把新解锁的商品名拼到提示文本后面。
     /// </summary>
-    private void GrowCity(City city, int tradeValue, ref string message)
+    private void GrowCity(City city, int tradeValue, double contribution, ref string message)
     {
-        int gained = Math.Max(1, (int)Math.Round(tradeValue * ProsperityRate));
+        int gained = Math.Max(1, (int)Math.Round(tradeValue * ProsperityRate * contribution));
+        int reputation = (int)Math.Round(tradeValue * SaleReputationRate * contribution);
         int oldLevel = city.Level;
         city.AddProsperity(gained);
+        bool reputationLeveled = reputation > 0 && _player.AddReputation(city, reputation);
 
         message += $"，{city.Name} 繁荣 +{gained}";
+        if (reputation > 0)
+        {
+            message += $"，声望 +{reputation}";
+            if (reputationLeveled)
+            {
+                message += $"（升到 Lv{_player.ReputationLevel(city)}）";
+            }
+        }
+
+        // 卖出同样计入该城所属国家的国家好感（自动卖出也按 80% 计入）
+        message += GainNationFavor(city, tradeValue, contribution);
 
         if (city.Level > oldLevel)
         {
@@ -275,6 +316,31 @@ public sealed class MarketService
             message += unlocks.Length > 0
                 ? $"（升到 Lv{city.Level}，解锁 {unlocks}）"
                 : $"（升到 Lv{city.Level}）";
+
+            _gameEvents.Publish(new CityLevelUpEvent(city, oldLevel, city.Level, _player.Day));
         }
+    }
+
+    /// <summary>
+    /// 按成交货值给城市所属国家增加好感，返回要拼进提示的文本。
+    /// 单笔最多 3 点；货值太小四舍五入为 0 时不提示，避免刷屏。
+    /// </summary>
+    private string GainNationFavor(City city, int tradeValue, double contribution)
+    {
+        int favor = Math.Min(NationFavorCapPerTrade,
+            (int)Math.Round(tradeValue * NationFavorRate * contribution));
+        if (favor <= 0)
+        {
+            return "";
+        }
+
+        bool leveled = _player.AddNationFavor(city.Nation, favor);
+        string text = $"，{city.Nation.Name} 好感 +{favor}";
+        if (leveled)
+        {
+            text += $"（升到 Lv{_player.NationFavorLevel(city.Nation)}）";
+        }
+
+        return text;
     }
 }

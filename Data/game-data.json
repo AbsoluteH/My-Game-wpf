@@ -1,4 +1,4 @@
-﻿{
+{
   "goods": [
     { "id": "clay", "name": "黏土", "basePrice": 18, "tier": 1, "reputationTier": 0, "category": "raw", "inputs": [], "origins": ["科隆", "巴黎"] },
     { "id": "grape", "name": "葡萄", "basePrice": 22, "tier": 1, "reputationTier": 0, "category": "raw", "inputs": [], "origins": ["波尔多", "巴黎", "里斯本", "塞维利亚"] },
@@ -37,148 +37,174 @@
     { "id": "gem", "name": "宝石", "basePrice": 480, "tier": 3, "reputationTier": 3, "category": "imported", "inputs": [], "origins": ["布鲁日", "塞维利亚"] }
   ],
 
+  "nations": [
+    { "name": "威尼斯共和国", "favorThresholds": [0, 30, 100, 200] },
+    { "name": "佛兰德", "favorThresholds": [0, 30, 100, 200] },
+    { "name": "法兰西", "favorThresholds": [0, 30, 100, 200] },
+    { "name": "英格兰", "favorThresholds": [0, 30, 100, 200] },
+    { "name": "米兰公国", "favorThresholds": [0, 30, 100, 200] },
+    { "name": "汉萨同盟", "favorThresholds": [0, 30, 100, 200] },
+    { "name": "葡萄牙", "favorThresholds": [0, 30, 100, 200] },
+    { "name": "卡斯蒂利亚", "favorThresholds": [0, 30, 100, 200] },
+    { "name": "阿拉贡", "favorThresholds": [0, 30, 100, 200] },
+    { "name": "拜占庭", "favorThresholds": [0, 30, 100, 200] }
+  ],
+
   "cities": [
     {
-      "name": "伦敦", "x": 0, "y": 0, "isPort": true,
+      "name": "伦敦", "x": 0, "y": 0, "isPort": true, "nation": "英格兰",
       "multipliers": {
-        "grape": 0.8, "clay": 0.8, "hide": 1.3, "ore": 0.8, "fish": 1.5,
-        "wool": 1.8, "pottery": 0.8, "beer": 0.8, "leather": 1.3, "cloth": 1.15,
-        "iron": 0.9, "linen": 1.3, "copper": 0.95, "paper": 0.9, "glass": 0.9,
-        "soap": 1.5, "spice": 0.7, "pewter": 0.85, "tapestry": 0.95, "furs": 0.7,
-        "amber": 0.85, "silk": 0.6, "perfume": 0.6, "ivory": 0.65, "pearl": 0.7,
-        "gem": 0.85
+        "grain": 1.2, "grape": 0.8, "clay": 0.8, "hide": 1.3, "salt": 0.85,
+        "ore": 0.8, "flax": 0.85, "fish": 1.5, "sand": 0.85, "wool": 1.8,
+        "honey": 0.9, "timber": 0.85, "pottery": 0.8, "beer": 0.8, "wine": 0.85,
+        "leather": 1.3, "cloth": 1.15, "iron": 0.9, "linen": 1.3, "copper": 0.95,
+        "paper": 0.9, "glass": 0.9, "soap": 1.5, "spice": 0.7, "pewter": 0.85,
+        "tapestry": 0.95, "furs": 0.7, "amber": 0.85, "silk": 0.6, "perfume": 0.6,
+        "ivory": 0.65, "pearl": 0.7, "gem": 0.85
       }
     },
     {
-      "name": "布鲁日", "x": 90, "y": 25, "isPort": true,
+      "name": "布鲁日", "x": 90, "y": 25, "isPort": true, "nation": "佛兰德",
       "multipliers": {
-        "grape": 0.85, "clay": 0.85, "ore": 0.85, "flax": 1.4, "fish": 1.4,
-        "sand": 0.8, "wool": 0.8, "pottery": 0.9, "beer": 0.85, "cloth": 1.8,
-        "iron": 0.95, "linen": 1.6, "copper": 0.9, "paper": 0.9, "glass": 0.8,
-        "soap": 1.3, "spice": 0.8, "pewter": 1.5, "tapestry": 2.0, "furs": 0.9,
-        "amber": 1.7, "silk": 0.75, "perfume": 0.7, "ivory": 0.7, "pearl": 0.9,
-        "gem": 1.9
+        "grain": 1.05, "grape": 0.85, "clay": 0.85, "hide": 0.95, "salt": 1.0,
+        "ore": 0.85, "flax": 1.4, "fish": 1.4, "sand": 0.8, "wool": 0.8,
+        "honey": 0.95, "timber": 0.9, "pottery": 0.9, "beer": 0.85, "wine": 0.95,
+        "leather": 0.95, "cloth": 1.8, "iron": 0.95, "linen": 1.6, "copper": 0.9,
+        "paper": 0.9, "glass": 0.8, "soap": 1.3, "spice": 0.8, "pewter": 1.5,
+        "tapestry": 2.0, "furs": 0.9, "amber": 1.7, "silk": 0.75, "perfume": 0.7,
+        "ivory": 0.7, "pearl": 0.9, "gem": 1.9
       }
     },
     {
-      "name": "巴黎", "x": 60, "y": 90, "isPort": false,
+      "name": "巴黎", "x": 60, "y": 90, "isPort": false, "nation": "法兰西",
       "multipliers": {
-        "grain": 1.7, "grape": 1.4, "clay": 1.4, "salt": 0.75, "flax": 1.2,
-        "fish": 0.75, "wool": 0.85, "honey": 1.5, "pottery": 1.25, "wine": 1.8,
-        "iron": 1.1, "linen": 1.25, "copper": 1.1, "paper": 1.5, "glass": 0.85,
-        "soap": 1.25, "spice": 0.55, "pewter": 1.1, "tapestry": 1.7, "furs": 0.8,
-        "amber": 0.85, "silk": 0.55, "perfume": 1.25, "ivory": 0.55, "pearl": 0.6,
-        "gem": 0.6
+        "grain": 1.7, "grape": 1.4, "clay": 1.4, "hide": 0.95, "salt": 0.75,
+        "ore": 0.9, "flax": 1.2, "fish": 0.75, "sand": 0.85, "wool": 0.85,
+        "honey": 1.5, "timber": 0.95, "pottery": 1.25, "beer": 1.0, "wine": 1.8,
+        "leather": 1.15, "cloth": 1.1, "iron": 1.1, "linen": 1.25, "copper": 1.1,
+        "paper": 1.5, "glass": 0.85, "soap": 1.25, "spice": 0.55, "pewter": 1.1,
+        "tapestry": 1.7, "furs": 0.8, "amber": 0.85, "silk": 0.55, "perfume": 1.25,
+        "ivory": 0.55, "pearl": 0.6, "gem": 0.6
       }
     },
     {
-      "name": "科隆", "x": 155, "y": 50, "isPort": false,
+      "name": "科隆", "x": 155, "y": 50, "isPort": false, "nation": "汉萨同盟",
       "multipliers": {
-        "grain": 1.25, "clay": 1.5, "salt": 0.8, "ore": 1.6, "wool": 0.8,
-        "timber": 1.6, "pottery": 1.5, "beer": 1.9, "wine": 1.25, "leather": 1.3,
-        "iron": 1.8, "linen": 1.2, "copper": 1.7, "paper": 1.3, "glass": 0.95,
-        "soap": 1.1, "spice": 0.55, "pewter": 1.2, "tapestry": 1.1, "furs": 1.8,
-        "amber": 0.9, "silk": 0.55, "perfume": 1.0, "ivory": 0.55, "pearl": 0.6,
-        "gem": 0.6
+        "grain": 1.25, "grape": 0.85, "clay": 1.5, "hide": 0.95, "salt": 0.8,
+        "ore": 1.6, "flax": 1.1, "fish": 0.85, "sand": 0.9, "wool": 0.8,
+        "honey": 1.15, "timber": 1.6, "pottery": 1.5, "beer": 1.9, "wine": 1.25,
+        "leather": 1.3, "cloth": 1.1, "iron": 1.8, "linen": 1.2, "copper": 1.7,
+        "paper": 1.3, "glass": 0.95, "soap": 1.1, "spice": 0.55, "pewter": 1.2,
+        "tapestry": 1.1, "furs": 1.8, "amber": 0.9, "silk": 0.55, "perfume": 1.0,
+        "ivory": 0.55, "pearl": 0.6, "gem": 0.6
       }
     },
     {
-      "name": "威尼斯", "x": 250, "y": 190, "isPort": true,
+      "name": "威尼斯", "x": 250, "y": 190, "isPort": true, "nation": "威尼斯共和国",
       "multipliers": {
-        "grain": 0.8, "clay": 0.8, "hide": 0.8, "salt": 1.7, "fish": 1.2,
-        "sand": 1.7, "honey": 0.75, "timber": 0.7, "beer": 0.7, "leather": 0.8,
-        "iron": 0.95, "linen": 0.85, "copper": 0.95, "paper": 0.9, "glass": 1.9,
-        "soap": 0.8, "spice": 1.5, "pewter": 0.9, "tapestry": 0.95, "furs": 0.75,
-        "amber": 1.1, "silk": 1.4, "perfume": 1.6, "ivory": 2.0, "pearl": 1.8,
-        "gem": 1.5
+        "grain": 0.8, "grape": 0.9, "clay": 0.8, "hide": 0.8, "salt": 1.7,
+        "ore": 0.85, "flax": 0.8, "fish": 1.2, "sand": 1.7, "wool": 0.85,
+        "honey": 0.75, "timber": 0.7, "pottery": 0.8, "beer": 0.7, "wine": 0.9,
+        "leather": 0.8, "cloth": 0.9, "iron": 0.95, "linen": 0.85, "copper": 0.95,
+        "paper": 0.9, "glass": 1.9, "soap": 0.8, "spice": 1.5, "pewter": 0.9,
+        "tapestry": 0.95, "furs": 0.75, "amber": 1.1, "silk": 1.4, "perfume": 1.6,
+        "ivory": 2.0, "pearl": 1.8, "gem": 1.5
       }
     },
     {
-      "name": "汉堡", "x": 175, "y": -10, "isPort": true,
+      "name": "汉堡", "x": 175, "y": -10, "isPort": true, "nation": "汉萨同盟",
       "multipliers": {
-        "grape": 0.8, "hide": 1.4, "salt": 0.8, "flax": 1.2, "fish": 1.7,
-        "sand": 0.8, "timber": 1.4, "beer": 1.5, "wine": 0.7, "cloth": 0.85,
-        "iron": 0.85, "linen": 1.5, "copper": 0.85, "paper": 0.85, "glass": 0.75,
-        "soap": 0.9, "spice": 0.75, "pewter": 0.95, "tapestry": 0.8, "furs": 1.3,
-        "amber": 1.35, "silk": 0.6, "perfume": 0.7, "ivory": 0.7, "pearl": 0.7,
-        "gem": 0.8
+        "grain": 0.9, "grape": 0.8, "clay": 0.9, "hide": 1.4, "salt": 0.8,
+        "ore": 0.85, "flax": 1.2, "fish": 1.7, "sand": 0.8, "wool": 0.9,
+        "honey": 0.9, "timber": 1.4, "pottery": 0.95, "beer": 1.5, "wine": 0.7,
+        "leather": 0.9, "cloth": 0.85, "iron": 0.85, "linen": 1.5, "copper": 0.85,
+        "paper": 0.85, "glass": 0.75, "soap": 0.9, "spice": 0.75, "pewter": 0.95,
+        "tapestry": 0.8, "furs": 1.3, "amber": 1.35, "silk": 0.6, "perfume": 0.7,
+        "ivory": 0.7, "pearl": 0.7, "gem": 0.8
       }
     },
     {
-      "name": "里昂", "x": 105, "y": 150, "isPort": false,
+      "name": "里昂", "x": 105, "y": 150, "isPort": false, "nation": "法兰西",
       "multipliers": {
-        "grape": 1.2, "clay": 1.1, "hide": 1.4, "salt": 0.8, "flax": 1.6,
-        "honey": 1.6, "pottery": 1.3, "wine": 1.3, "leather": 1.2, "cloth": 1.3,
-        "iron": 1.1, "linen": 1.6, "copper": 1.1, "paper": 1.1, "glass": 1.0,
-        "soap": 1.2, "spice": 0.55, "pewter": 1.2, "tapestry": 1.3, "furs": 0.85,
-        "amber": 0.9, "silk": 0.6, "perfume": 0.9, "ivory": 0.6, "pearl": 0.6,
-        "gem": 0.65
+        "grain": 1.0, "grape": 1.2, "clay": 1.1, "hide": 1.4, "salt": 0.8,
+        "ore": 0.9, "flax": 1.6, "fish": 0.85, "sand": 0.9, "wool": 0.9,
+        "honey": 1.6, "timber": 0.9, "pottery": 1.3, "beer": 1.1, "wine": 1.3,
+        "leather": 1.2, "cloth": 1.3, "iron": 1.1, "linen": 1.6, "copper": 1.1,
+        "paper": 1.1, "glass": 1.0, "soap": 1.2, "spice": 0.55, "pewter": 1.2,
+        "tapestry": 1.3, "furs": 0.85, "amber": 0.9, "silk": 0.6, "perfume": 0.9,
+        "ivory": 0.6, "pearl": 0.6, "gem": 0.65
       }
     },
     {
-      "name": "米兰", "x": 200, "y": 150, "isPort": false,
+      "name": "米兰", "x": 200, "y": 150, "isPort": false, "nation": "米兰公国",
       "multipliers": {
-        "clay": 1.3, "ore": 1.5, "flax": 1.2, "fish": 0.8, "sand": 1.6,
-        "wool": 1.3, "timber": 0.8, "pottery": 1.3, "leather": 1.2, "cloth": 1.4,
-        "iron": 1.5, "linen": 1.3, "copper": 1.4, "paper": 1.1, "glass": 0.95,
-        "soap": 1.1, "spice": 0.55, "pewter": 1.2, "tapestry": 1.3, "furs": 0.85,
-        "amber": 0.85, "silk": 0.6, "perfume": 1.3, "ivory": 0.55, "pearl": 0.6,
-        "gem": 0.7
+        "grain": 0.9, "grape": 0.9, "clay": 1.3, "hide": 0.9, "salt": 0.9,
+        "ore": 1.5, "flax": 1.2, "fish": 0.8, "sand": 1.6, "wool": 1.3,
+        "honey": 0.95, "timber": 0.8, "pottery": 1.3, "beer": 1.0, "wine": 0.9,
+        "leather": 1.2, "cloth": 1.4, "iron": 1.5, "linen": 1.3, "copper": 1.4,
+        "paper": 1.1, "glass": 0.95, "soap": 1.1, "spice": 0.55, "pewter": 1.2,
+        "tapestry": 1.3, "furs": 0.85, "amber": 0.85, "silk": 0.6, "perfume": 1.3,
+        "ivory": 0.55, "pearl": 0.6, "gem": 0.7
       }
     },
     {
-      "name": "波尔多", "x": 15, "y": 135, "isPort": true,
+      "name": "波尔多", "x": 15, "y": 135, "isPort": true, "nation": "法兰西",
       "multipliers": {
-        "grape": 1.8, "salt": 1.4, "ore": 0.85, "fish": 1.1, "sand": 0.8,
-        "honey": 1.3, "beer": 0.8, "wine": 1.85, "leather": 0.85, "cloth": 0.85,
-        "iron": 0.85, "linen": 0.9, "copper": 0.85, "paper": 0.9, "glass": 0.75,
-        "soap": 0.9, "spice": 0.8, "pewter": 0.9, "tapestry": 0.85, "furs": 0.9,
-        "amber": 0.85, "silk": 0.7, "perfume": 1.0, "ivory": 0.7, "pearl": 0.7,
-        "gem": 0.8
+        "grain": 0.95, "grape": 1.8, "clay": 0.9, "hide": 0.9, "salt": 1.4,
+        "ore": 0.85, "flax": 1.1, "fish": 1.1, "sand": 0.8, "wool": 0.9,
+        "honey": 1.3, "timber": 0.9, "pottery": 0.9, "beer": 0.8, "wine": 1.85,
+        "leather": 0.85, "cloth": 0.85, "iron": 0.85, "linen": 0.9, "copper": 0.85,
+        "paper": 0.9, "glass": 0.75, "soap": 0.9, "spice": 0.8, "pewter": 0.9,
+        "tapestry": 0.85, "furs": 0.9, "amber": 0.85, "silk": 0.7, "perfume": 1.0,
+        "ivory": 0.7, "pearl": 0.7, "gem": 0.8
       }
     },
     {
-      "name": "里斯本", "x": -30, "y": 165, "isPort": true,
+      "name": "里斯本", "x": -30, "y": 165, "isPort": true, "nation": "葡萄牙",
       "multipliers": {
-        "grain": 0.9, "grape": 1.5, "clay": 0.85, "flax": 0.85, "fish": 1.6,
-        "sand": 0.85, "timber": 0.85, "pottery": 0.9, "beer": 0.85, "wine": 1.5,
-        "iron": 0.85, "linen": 0.9, "copper": 0.85, "paper": 0.9, "glass": 0.85,
-        "soap": 0.95, "spice": 1.4, "pewter": 0.9, "tapestry": 0.9, "furs": 0.8,
-        "amber": 0.9, "silk": 0.9, "perfume": 0.8, "ivory": 0.9, "pearl": 0.9,
-        "gem": 0.9
+        "grain": 0.9, "grape": 1.5, "clay": 0.85, "hide": 0.9, "salt": 0.95,
+        "ore": 0.9, "flax": 0.85, "fish": 1.6, "sand": 0.85, "wool": 1.1,
+        "honey": 0.9, "timber": 0.85, "pottery": 0.9, "beer": 0.85, "wine": 1.5,
+        "leather": 0.9, "cloth": 0.9, "iron": 0.85, "linen": 0.9, "copper": 0.85,
+        "paper": 0.9, "glass": 0.85, "soap": 0.95, "spice": 1.4, "pewter": 0.9,
+        "tapestry": 0.9, "furs": 0.8, "amber": 0.9, "silk": 0.9, "perfume": 0.8,
+        "ivory": 0.9, "pearl": 0.9, "gem": 0.9
       }
     },
     {
-      "name": "塞维利亚", "x": 0, "y": 200, "isPort": true,
+      "name": "塞维利亚", "x": 0, "y": 200, "isPort": true, "nation": "卡斯蒂利亚",
       "multipliers": {
-        "grape": 1.4, "salt": 1.4, "ore": 0.9, "flax": 0.8, "sand": 0.85,
-        "wool": 1.5, "honey": 0.9, "timber": 0.8, "beer": 0.85, "wine": 1.2,
-        "iron": 0.85, "linen": 0.85, "copper": 0.85, "paper": 0.9, "glass": 0.9,
-        "soap": 0.9, "spice": 0.9, "pewter": 0.9, "tapestry": 0.9, "furs": 0.85,
-        "amber": 0.9, "silk": 0.9, "perfume": 0.75, "ivory": 0.85, "pearl": 0.85,
-        "gem": 1.4
+        "grain": 1.0, "grape": 1.4, "clay": 0.9, "hide": 0.9, "salt": 1.4,
+        "ore": 0.9, "flax": 0.8, "fish": 1.0, "sand": 0.85, "wool": 1.5,
+        "honey": 0.9, "timber": 0.8, "pottery": 0.95, "beer": 0.85, "wine": 1.2,
+        "leather": 0.95, "cloth": 0.95, "iron": 0.85, "linen": 0.85, "copper": 0.85,
+        "paper": 0.9, "glass": 0.9, "soap": 0.9, "spice": 0.9, "pewter": 0.9,
+        "tapestry": 0.9, "furs": 0.85, "amber": 0.9, "silk": 0.9, "perfume": 0.75,
+        "ivory": 0.85, "pearl": 0.85, "gem": 1.4
       }
     },
     {
-      "name": "巴塞罗那", "x": 120, "y": 215, "isPort": true,
+      "name": "巴塞罗那", "x": 120, "y": 215, "isPort": true, "nation": "阿拉贡",
       "multipliers": {
-        "clay": 0.9, "hide": 0.9, "ore": 0.9, "sand": 0.9, "wool": 1.2,
-        "honey": 0.9, "timber": 0.85, "beer": 0.9, "wine": 1.1, "cloth": 1.5,
-        "iron": 0.9, "linen": 0.95, "copper": 0.9, "paper": 0.9, "glass": 0.9,
-        "soap": 0.9, "spice": 0.85, "pewter": 0.95, "tapestry": 0.95, "furs": 0.85,
-        "amber": 0.9, "silk": 0.9, "perfume": 0.8, "ivory": 0.85, "pearl": 1.4,
-        "gem": 0.95
+        "grain": 0.95, "grape": 1.1, "clay": 0.9, "hide": 0.9, "salt": 1.0,
+        "ore": 0.9, "flax": 0.95, "fish": 1.1, "sand": 0.9, "wool": 1.2,
+        "honey": 0.9, "timber": 0.85, "pottery": 0.95, "beer": 0.9, "wine": 1.1,
+        "leather": 0.95, "cloth": 1.5, "iron": 0.9, "linen": 0.95, "copper": 0.9,
+        "paper": 0.9, "glass": 0.9, "soap": 0.9, "spice": 0.85, "pewter": 0.95,
+        "tapestry": 0.95, "furs": 0.85, "amber": 0.9, "silk": 0.9, "perfume": 0.8,
+        "ivory": 0.85, "pearl": 1.4, "gem": 0.95
       }
     },
     {
-      "name": "君士坦丁堡", "x": 330, "y": 230, "isPort": true,
+      "name": "君士坦丁堡", "x": 330, "y": 230, "isPort": true, "nation": "拜占庭",
       "multipliers": {
-        "clay": 0.85, "hide": 0.85, "ore": 0.85, "flax": 0.85, "sand": 0.85,
-        "wool": 0.9, "timber": 0.8, "pottery": 0.9, "beer": 0.85, "wine": 0.9,
-        "iron": 0.9, "linen": 0.85, "copper": 0.9, "paper": 0.9, "glass": 1.1,
-        "soap": 0.9, "spice": 1.5, "pewter": 0.9, "tapestry": 1.1, "furs": 0.85,
-        "amber": 0.9, "silk": 1.6, "perfume": 0.9, "ivory": 1.6, "pearl": 0.95,
-        "gem": 1.0
+        "grain": 0.9, "grape": 1.0, "clay": 0.85, "hide": 0.85, "salt": 1.1,
+        "ore": 0.85, "flax": 0.85, "fish": 1.0, "sand": 0.85, "wool": 0.9,
+        "honey": 0.9, "timber": 0.8, "pottery": 0.9, "beer": 0.85, "wine": 0.9,
+        "leather": 0.9, "cloth": 0.95, "iron": 0.9, "linen": 0.85, "copper": 0.9,
+        "paper": 0.9, "glass": 1.1, "soap": 0.9, "spice": 1.5, "pewter": 0.9,
+        "tapestry": 1.1, "furs": 0.85, "amber": 0.9, "silk": 1.6, "perfume": 0.9,
+        "ivory": 1.6, "pearl": 0.95, "gem": 1.0
       }
     }
   ],

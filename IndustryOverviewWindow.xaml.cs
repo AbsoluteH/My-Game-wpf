@@ -62,6 +62,9 @@ public partial class IndustryOverviewWindow : Window
         /// <summary>自动卖出节奏的显示名。</summary>
         public string AutoSell { get; init; } = "";
 
+        /// <summary>本城房产状态，例如“Lv2 · 120/350”；未购置时为“未购置”。</summary>
+        public string EstateInfo { get; init; } = "";
+
         /// <summary>该行对应的城市与节奏，用于在本窗口修改设置。</summary>
         public City? CityRef { get; init; }
         public AutoSellMode Mode { get; init; }
@@ -114,18 +117,25 @@ public partial class IndustryOverviewWindow : Window
 
         int workshopCount = 0;
         int warehouseCount = 0;
+        int estateCount = 0;
         int stockUnits = 0;
 
         foreach (var city in _game.Cities)
         {
             var workshops = _game.Industry.Workshops(city);
             var warehouse = _game.Industry.WarehouseOf(city);
+            var estate = _game.Home.EstateOf(city);
             int slots = IndustryService.MaxWorkshops(city);
 
             workshopCount += workshops.Count;
             if (warehouse.IsBuilt)
             {
                 warehouseCount++;
+            }
+
+            if (estate.IsOwned)
+            {
+                estateCount++;
             }
 
             stockUnits += warehouse.Used;
@@ -194,6 +204,9 @@ public partial class IndustryOverviewWindow : Window
                 Used = warehouse.IsBuilt ? warehouse.Used.ToString() : "—",
                 Free = warehouse.IsBuilt ? warehouse.Free.ToString() : "—",
                 StockSummary = stockSummary,
+                EstateInfo = estate.IsOwned
+                    ? $"Lv{estate.Level} · {estate.Used}/{estate.Capacity}"
+                    : "未购置",
                 UsageRate = warehouse.IsBuilt && warehouse.Capacity > 0
                     ? $"{warehouse.Used * 100.0 / warehouse.Capacity:0}%"
                     : "—",
@@ -223,10 +236,10 @@ public partial class IndustryOverviewWindow : Window
             }
         }
 
-        SummaryText.Text = $"共 {workshopCount} 座作坊、{warehouseCount} 座仓库，"
+        SummaryText.Text = $"共 {workshopCount} 座作坊、{warehouseCount} 座仓库、{estateCount} 处房产，"
                          + $"仓库合计存放 {stockUnits} 单位货物。"
                          + "作坊只能生产本城盛产的货物，日产一级 5 / 二级 3 / 三级 1 件；"
-                         + "仓库满时作坊暂停生产。";
+                         + "仓库满时作坊暂停生产。房产容量独立于仓库，房产里的货物不参与自动卖出。";
 
         // 恢复刷新前的选中城市，并让下拉框显示该城的当前节奏
         if (selectedCity != null)

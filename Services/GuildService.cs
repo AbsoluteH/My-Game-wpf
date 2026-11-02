@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using TradeGame.Entities;
+using TradeGame.Events;
 using TradeGame.Strategies;
 
 namespace TradeGame.Services;
@@ -45,6 +46,7 @@ public sealed class GuildService
     private readonly IReadOnlyList<City> _cities;
     private readonly IReadOnlyList<Good> _goods;
     private readonly IPricingStrategy _pricing;
+    private readonly GameEventBus _gameEvents;
     private readonly Random _rng;
 
     /// <summary>各城当前可接受的任务：key 为城市名。</summary>
@@ -70,12 +72,13 @@ public sealed class GuildService
 
     /// <param name="seed">随机种子，保证同一局的任务生成可复现。</param>
     public GuildService(Player player, IReadOnlyList<City> cities, IReadOnlyList<Good> goods,
-                        IPricingStrategy pricing, int seed = 20261029)
+                        IPricingStrategy pricing, GameEventBus gameEvents, int seed = 20261029)
     {
         _player = player;
         _cities = cities;
         _goods = goods;
         _pricing = pricing;
+        _gameEvents = gameEvents;
         _rng = new Random(seed);
 
         foreach (var city in _cities)
@@ -138,7 +141,7 @@ public sealed class GuildService
             return false;
         }
 
-        _player.Spend(cost);
+        _player.Spend(cost, GoldChangeReason.GuildDonation);
         _donateCount[city.Name] = _donateCount.GetValueOrDefault(city.Name) + 1;
         _player.AddReputation(city, DonateReputation);
 
@@ -238,7 +241,7 @@ public sealed class GuildService
 
         int oldLevel = _player.ReputationLevel(origin);
         _player.RemoveCargo(mission.Good.Id, mission.Quantity);
-        _player.Earn(mission.RewardGold);
+        _player.Earn(mission.RewardGold, GoldChangeReason.GuildReward);
         bool leveled = _player.AddReputation(origin, mission.RewardReputation);
         _active.Remove(mission);
 
@@ -249,6 +252,9 @@ public sealed class GuildService
         {
             message += $"（{DescribeReputationUnlocks(origin, oldLevel)}）";
         }
+
+        _gameEvents.Publish(new GuildMissionCompletedEvent(mission, mission.RewardGold,
+                                                           mission.RewardReputation, _player.Day));
 
         return true;
     }
@@ -426,10 +432,9 @@ public sealed class GuildService
 
     /// <summary>
     /// 收购任务报酬按“在别处实际采购的成本 ×1.2”算（采购成本已含大额买入的滑点），再补贴来回程路费。
-    /// 防套利：只有当**本城自己就是该货最便宜的来源**时才把报酬压到本城采购成本的 90% 以下，
-    /// 否则玩家可以就地买入就地交付白拿钱。注意不能只看“本城是否经营该货”——
-    /// 本城若只是稀缺（倍率 &lt; 1），就地买反而更贵，不存在套利，报酬不该被压。
-    /// 压价后低于成本加路费的任务不发。
+    /// 候选货物只取本城不盛产的货（倍率 &lt; 1 或不经营），本城买价必然高于外地，
+    /// 因此按外地最低采购成本定价即可，不存在“就地买入白拿报酬”的套利。
+    /// 若报酬低于采购成本加路费则不发。
     /// </summary>
     private GuildMission? BuildImport(City city, Good good, int day)
     {
@@ -440,13 +445,6 @@ public sealed class GuildService
         int buyCost = _pricing.TotalBuyCost(source, good, quantity);
         int rewardGold = (int)Math.Round(buyCost * 1.2)
                        + roundTripDays * TravelService.DailyTravelCost;
-
-        if (city.SellsGood(good.Id) && city.MultiplierFor(good.Id) >= 1.0)
-        {
-            // 本城盛产，是最便宜的来源：压价，避免就地买入白拿报酬
-            rewardGold = Math.Min(rewardGold,
-                (int)Math.Round(_pricing.TotalBuyCost(city, good, quantity) * 0.9));
-        }
 
         int cost = buyCost + roundTripDays * TravelService.DailyTravelCost;
         if (rewardGold <= cost)

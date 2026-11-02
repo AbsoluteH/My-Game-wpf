@@ -1,13 +1,14 @@
 using System;
 using System.Collections.Generic;
 using TradeGame.Entities;
+using TradeGame.Events;
 using TradeGame.Strategies;
 
 namespace TradeGame.Services;
 
 /// <summary>
 /// 旅行服务：扣路费、逐天推进时间、切所在地。
-/// 每推进一天，所有城市库存向平衡值回归并重算价格。
+/// 每推进一天，所有城市库存向平衡值回归并重算价格，然后广播 <see cref="NewDayEvent"/>。
 /// </summary>
 public sealed class TravelService
 {
@@ -24,18 +25,16 @@ public sealed class TravelService
     private readonly IReadOnlyList<City> _cities;
     private readonly IReadOnlyList<Good> _goods;
     private readonly IPricingStrategy _pricing;
-
-    /// <summary>每推进一天后的回调（用当前天数调用），用于驱动行情事件、任务刷新等每日逻辑。</summary>
-    private readonly Action<int>? _onDayAdvanced;
+    private readonly GameEventBus _gameEvents;
 
     public TravelService(Player player, IReadOnlyList<City> cities, IReadOnlyList<Good> goods,
-                         IPricingStrategy pricing, Action<int>? onDayAdvanced = null)
+                         IPricingStrategy pricing, GameEventBus gameEvents)
     {
         _player = player;
         _cities = cities;
         _goods = goods;
         _pricing = pricing;
-        _onDayAdvanced = onDayAdvanced;
+        _gameEvents = gameEvents;
     }
 
     /// <summary>从当前城市前往目标城市的全部路费（天数 × 每日路费）。</summary>
@@ -62,7 +61,8 @@ public sealed class TravelService
             return false;
         }
 
-        _player.Spend(fee);
+        _player.Spend(fee, GoldChangeReason.TravelFee);
+        City from = _player.CurrentCity;
 
         // 旅行消耗的天数同样会让市场发生变化
         for (int i = 0; i < days; i++)
@@ -72,6 +72,9 @@ public sealed class TravelService
 
         _player.CurrentCity = destination;
         _pricing.UpdatePrices(destination, _goods); // 抵达后再算一次，消除旅途末端的时间差
+
+        // 到站事件：行会刷新、界面切换等跨系统逻辑统一从这里接入
+        _gameEvents.Publish(new ArrivedAtCityEvent(from, destination, days, _player.Day));
 
         message = $"行进 {days} 天抵达 {destination.Name}，路费 {fee} 金币";
         return true;
@@ -106,6 +109,6 @@ public sealed class TravelService
         }
 
         // 每日行情事件：到期的恢复原价，按排期生成新的波动
-        _onDayAdvanced?.Invoke(_player.Day);
+        _gameEvents.Publish(new NewDayEvent(_player.Day));
     }
 }

@@ -31,13 +31,21 @@ public static class GameData
                 g.Origins.ToArray()))
             .ToList();
 
-    /// <summary>从 JSON 创建城市表（同时用 JSON 里的平衡参数配置城市升级门槛）。</summary>
-    public static List<City> CreateCities()
+    /// <summary>从 JSON 创建国家表。</summary>
+    public static List<Nation> CreateNations() =>
+        Data.Value.Nations
+            .Select(n => new Nation(n.Name, n.FavorThresholds))
+            .ToList();
+
+    /// <summary>从 JSON 创建城市表，并把城市绑定到已创建的国家（同时配置城市升级门槛）。</summary>
+    public static List<City> CreateCities(IReadOnlyList<Nation> nations)
     {
         City.ConfigureProsperityThresholds(Data.Value.Balance.CityLevelThresholds);
+        var nationsByName = nations.ToDictionary(n => n.Name);
 
         return Data.Value.Cities
-            .Select(c => new City(c.Name, c.X, c.Y, new Dictionary<string, double>(c.Multipliers), c.IsPort))
+            .Select(c => new City(c.Name, c.X, c.Y, c.IsPort, nationsByName[c.Nation],
+                                  new Dictionary<string, double>(c.Multipliers)))
             .ToList();
     }
 
@@ -109,6 +117,40 @@ public static class GameData
             throw new InvalidDataException($"{path}：cities 不能为空");
         }
 
+        if (file.Nations.Count == 0)
+        {
+            throw new InvalidDataException($"{path}：nations 不能为空");
+        }
+
+        // 国家：名称唯一、好感门槛从 0 开始严格递增
+        foreach (var duplicate in file.Nations.GroupBy(n => n.Name).Where(n => n.Count() > 1))
+        {
+            throw new InvalidDataException($"{path}：国家「{duplicate.Key}」重复");
+        }
+
+        foreach (var nation in file.Nations)
+        {
+            if (string.IsNullOrWhiteSpace(nation.Name))
+            {
+                throw new InvalidDataException($"{path}：有国家缺少 name");
+            }
+
+            if (nation.FavorThresholds.Length < Nation.MaxLevel + 1)
+            {
+                throw new InvalidDataException(
+                    $"{path}：国家「{nation.Name}」的 favorThresholds 至少需要 {Nation.MaxLevel + 1} 个元素（第 0 位固定为 0）");
+            }
+
+            var favorThresholds = nation.FavorThresholds;
+            if (favorThresholds[0] != 0
+                || favorThresholds.Zip(favorThresholds.Skip(1), (a, b) => b > a).Any(increasing => !increasing))
+            {
+                throw new InvalidDataException($"{path}：国家「{nation.Name}」的 favorThresholds 必须从 0 开始且严格递增");
+            }
+        }
+
+        var nationNames = file.Nations.Select(n => n.Name).ToHashSet();
+
         // 商品：id 唯一、价格为正、等级合法
         foreach (var duplicate in file.Goods.GroupBy(g => g.Id).Where(g => g.Count() > 1))
         {
@@ -144,6 +186,12 @@ public static class GameData
 
         foreach (var city in file.Cities)
         {
+            if (string.IsNullOrWhiteSpace(city.Nation) || !nationNames.Contains(city.Nation))
+            {
+                throw new InvalidDataException(
+                    $"{path}：城市「{city.Name}」的 nation「{city.Nation}」不是已定义的国家");
+            }
+
             if (city.Multipliers.Count == 0)
             {
                 throw new InvalidDataException($"{path}：城市「{city.Name}」没有任何经营货物");
@@ -157,6 +205,15 @@ public static class GameData
             if (city.Multipliers.Values.Any(v => v <= 0))
             {
                 throw new InvalidDataException($"{path}：城市「{city.Name}」的产销倍率必须大于 0");
+            }
+        }
+
+        // 每个国家至少要有 1 座城市，否则国家任务没有挂牌与交付地点
+        foreach (var nation in file.Nations)
+        {
+            if (!file.Cities.Any(c => c.Nation == nation.Name))
+            {
+                throw new InvalidDataException($"{path}：国家「{nation.Name}」没有任何城市");
             }
         }
 
@@ -227,6 +284,13 @@ public static class GameData
                 }
             }
 
+            // 同一原料只能出现一次：重复写会让作坊采购分两笔成交、价格与预算判断失真
+            foreach (var duplicate in good.Inputs.GroupBy(i => i.Id).Where(g => g.Count() > 1))
+            {
+                throw new InvalidDataException(
+                    $"{path}：商品「{good.Name}」的配方重复引用了「{duplicate.Key}」，请合并成一条数量");
+            }
+
             // 配方经济性：一整套输入按基础价采购的成本必须低于产出基础价，否则作坊注定亏本
             if (good.Inputs.Count > 0)
             {
@@ -293,6 +357,9 @@ public static class GameData
         [JsonPropertyName("cities")]
         public List<CityEntry> Cities { get; set; } = new();
 
+        [JsonPropertyName("nations")]
+        public List<NationEntry> Nations { get; set; } = new();
+
         [JsonPropertyName("balance")]
         public BalanceEntry Balance { get; set; } = new();
     }
@@ -347,8 +414,20 @@ public static class GameData
         [JsonPropertyName("isPort")]
         public bool IsPort { get; set; }
 
+        [JsonPropertyName("nation")]
+        public string Nation { get; set; } = "";
+
         [JsonPropertyName("multipliers")]
         public Dictionary<string, double> Multipliers { get; set; } = new();
+    }
+
+    private sealed class NationEntry
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = "";
+
+        [JsonPropertyName("favorThresholds")]
+        public int[] FavorThresholds { get; set; } = { 0, 30, 100, 200 };
     }
 
     private sealed class BalanceEntry

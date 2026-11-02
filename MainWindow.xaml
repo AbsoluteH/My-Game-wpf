@@ -20,6 +20,7 @@
                     <TextBlock x:Name="CityText" Margin="0,4,0,0"/>
                     <TextBlock x:Name="CityLevelText" Margin="0,4,0,0"/>
                     <TextBlock x:Name="ReputationText" Margin="0,4,0,0"/>
+                    <TextBlock x:Name="NationText" Margin="0,4,0,0"/>
                     <DockPanel Margin="0,4,0,0">
                         <Button DockPanel.Dock="Right" Content="作弊台" Width="60" Height="22" Padding="0"
                                 Click="CheatButton_Click"/>
@@ -129,12 +130,12 @@
                               HeadersVisibility="Column" CanUserAddRows="False" SelectionMode="Single"
                               GridLinesVisibility="Horizontal">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="类型" Binding="{Binding TypeName}" Width="55"/>
+                            <DataGridTextColumn Header="类型" Binding="{Binding TypeName}" Width="80"/>
                             <DataGridTextColumn Header="货物" Binding="{Binding GoodName}" Width="*"/>
                             <DataGridTextColumn Header="数量" Binding="{Binding Quantity}" Width="50"/>
                             <DataGridTextColumn Header="交付地" Binding="{Binding TargetName}" Width="70"/>
                             <DataGridTextColumn Header="报酬" Binding="{Binding RewardGold}" Width="70"/>
-                            <DataGridTextColumn Header="声望" Binding="{Binding RewardReputation}" Width="50"/>
+                            <DataGridTextColumn Header="声望/好感" Binding="{Binding RewardReputation}" Width="70"/>
                             <DataGridTextColumn Header="截止" Binding="{Binding Deadline}" Width="70"/>
                         </DataGrid.Columns>
                     </DataGrid>
@@ -161,12 +162,50 @@
                                     <DataGridTextColumn Header="货物" Binding="{Binding GoodName}" Width="*"/>
                                     <DataGridTextColumn Header="数量" Binding="{Binding Quantity}" Width="50"/>
                                     <DataGridTextColumn Header="报酬" Binding="{Binding RewardGold}" Width="70"/>
-                                    <DataGridTextColumn Header="声望" Binding="{Binding RewardReputation}" Width="50"/>
+                                    <DataGridTextColumn Header="声望/好感" Binding="{Binding RewardReputation}" Width="70"/>
                                     <DataGridTextColumn Header="截止" Binding="{Binding Deadline}" Width="70"/>
                                 </DataGrid.Columns>
                             </DataGrid>
                         </DockPanel>
                     </GroupBox>
+                </Grid>
+            </TabItem>
+
+            <!-- 国家分页：当前国家的好感进度与该国挂牌的国家任务 -->
+            <TabItem Header="国家">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>  <!-- 国家与好感进度 -->
+                        <RowDefinition Height="*"/>     <!-- 国家任务列表 -->
+                        <RowDefinition Height="Auto"/>  <!-- 接受按钮与提示 -->
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Margin="0,0,0,6">
+                        <TextBlock x:Name="NationTitleText" FontSize="14" FontWeight="SemiBold"/>
+                        <TextBlock Text="国家好感由在该国城市买卖货物、完成国家任务累积。好感每升一级会开放更高档的国家任务：Lv1 低档、Lv2 中档、Lv3 高档。国家任务统一为收购：在本国城市接取，货物送到该国首都交付（货源不限国家）；同一国家同时只能接 1 条。"
+                                   Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                        <TextBlock x:Name="NationHintText" Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                    </StackPanel>
+
+                    <DataGrid Grid.Row="1" x:Name="NationOfferGrid" AutoGenerateColumns="False" IsReadOnly="True"
+                              HeadersVisibility="Column" CanUserAddRows="False" SelectionMode="Single"
+                              GridLinesVisibility="Horizontal">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="类型" Binding="{Binding TypeName}" Width="80"/>
+                            <DataGridTextColumn Header="货物" Binding="{Binding GoodName}" Width="*"/>
+                            <DataGridTextColumn Header="数量" Binding="{Binding Quantity}" Width="55"/>
+                            <DataGridTextColumn Header="交付地" Binding="{Binding TargetName}" Width="75"/>
+                            <DataGridTextColumn Header="报酬" Binding="{Binding RewardGold}" Width="75"/>
+                            <DataGridTextColumn Header="好感" Binding="{Binding RewardReputation}" Width="55"/>
+                            <DataGridTextColumn Header="截止" Binding="{Binding Deadline}" Width="110"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Content="接受国家任务" Width="120" Click="AcceptNationMissionButton_Click"/>
+                        <TextBlock Text="接受后到「行会任务」页的『我已接受的任务』中统一交付" Foreground="Gray"
+                                   VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    </StackPanel>
                 </Grid>
             </TabItem>
             <TabItem Header="酒馆">
@@ -309,6 +348,71 @@
                             </DataGrid.Columns>
                         </DataGrid>
                     </GroupBox>
+                </Grid>
+            </TabItem>
+            <!-- 家园分页：本城房产与房产存储 -->
+            <TabItem Header="家园">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>  <!-- 标题与规则说明 -->
+                        <RowDefinition Height="Auto"/>  <!-- 房产状态与购置/升级 -->
+                        <RowDefinition Height="170"/>   <!-- 舱内货物 / 房产库存 -->
+                        <RowDefinition Height="Auto"/>  <!-- 存取按钮 -->
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Margin="0,0,0,6">
+                        <TextBlock x:Name="HomeTitle" FontSize="14" FontWeight="SemiBold"/>
+                        <TextBlock Text="每座城市可以购置一处房产，等级受城市规模限制。房产比作坊贵，容量独立于仓库，房产里的货物不参与仓库自动卖出，也不进市场。后续的婚姻、家族与奢侈品（文玩、名画等）都会放在家园里。"
+                                   Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                    </StackPanel>
+
+                    <DockPanel Grid.Row="1" Margin="0,0,0,6">
+                        <Button x:Name="EstateButton" DockPanel.Dock="Right" Width="260"
+                                Click="EstateButton_Click"/>
+                        <TextBlock x:Name="EstateText" VerticalAlignment="Center"/>
+                    </DockPanel>
+
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <GroupBox Grid.Column="0" Header="舱内货物（从这里存入房产）" Padding="6">
+                            <DataGrid x:Name="EstateCargoGrid" AutoGenerateColumns="False" IsReadOnly="True"
+                                      HeadersVisibility="Column" CanUserAddRows="False" SelectionMode="Single"
+                                      GridLinesVisibility="Horizontal">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="货物" Binding="{Binding Name}" Width="*"/>
+                                    <DataGridTextColumn Header="数量" Binding="{Binding Quantity}" Width="70"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+
+                        <GroupBox Grid.Column="2" Header="房产库存（从这里取回舱内）" Padding="6">
+                            <DataGrid x:Name="EstateGrid" AutoGenerateColumns="False" IsReadOnly="True"
+                                      HeadersVisibility="Column" CanUserAddRows="False" SelectionMode="Single"
+                                      GridLinesVisibility="Horizontal">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="货物" Binding="{Binding Name}" Width="*"/>
+                                    <DataGridTextColumn Header="数量" Binding="{Binding Quantity}" Width="70"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+                    </Grid>
+
+                    <StackPanel Grid.Row="3" Margin="0,8,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="存入房产（舱内选中 → 房产）" Width="200"
+                                    Click="StoreToEstateButton_Click"/>
+                            <Button Content="取出到舱内（房产选中 → 舱内）" Width="200" Margin="8,0,0,0"
+                                    Click="TakeFromEstateButton_Click"/>
+                            <TextBlock Text="数量：" VerticalAlignment="Center" Margin="12,0,4,0"/>
+                            <TextBox x:Name="EstateQuantityBox" Width="60" Text="10"
+                                     VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
                 </Grid>
             </TabItem>
         </TabControl>

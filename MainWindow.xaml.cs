@@ -113,6 +113,7 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<CargoRow> _cargo = new();
     private readonly ObservableCollection<DestinationRow> _destinations = new();
     private readonly ObservableCollection<MissionRow> _guildOffers = new();
+    private readonly ObservableCollection<MissionRow> _nationOffers = new();
     private readonly ObservableCollection<MissionRow> _missions = new();
 
     /// <summary>酒馆里已经打听到的行情消息（纯文本，按时间保留）。</summary>
@@ -121,6 +122,9 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<WorkshopRow> _workshops = new();
     private readonly ObservableCollection<BuildableRow> _buildable = new();
     private readonly ObservableCollection<WarehouseRow> _warehouse = new();
+
+    /// <summary>本城房产库存（与仓库库存各自独立）。</summary>
+    private readonly ObservableCollection<WarehouseRow> _estateStock = new();
 
     public MainWindow()
     {
@@ -131,11 +135,16 @@ public partial class MainWindow : Window
         CargoGrid.ItemsSource = _cargo;
         DestinationBox.ItemsSource = _destinations;
         GuildOfferGrid.ItemsSource = _guildOffers;
+        NationOfferGrid.ItemsSource = _nationOffers;
         MyMissionGrid.ItemsSource = _missions;
         RumorList.ItemsSource = _rumors;
         WorkshopGrid.ItemsSource = _workshops;
         BuildableGrid.ItemsSource = _buildable;
         WarehouseGrid.ItemsSource = _warehouse;
+
+        // 家园页左侧复用舱内货物列表，右侧是本城房产库存
+        EstateCargoGrid.ItemsSource = _cargo;
+        EstateGrid.ItemsSource = _estateStock;
 
         // 自动卖出节奏下拉框：固定三档，顺序与 AutoSellModes.All 一致
         foreach (var mode in AutoSellModes.All)
@@ -172,6 +181,10 @@ public partial class MainWindow : Window
         ReputationText.Text = $"城市声望：Lv{_game.CityReputationLevel}" + (_game.CityReputationNeeded > 0
             ? $"（{_game.CityReputation} / {_game.CityReputationNeeded}）"
             : "（已满级）");
+        NationText.Text = $"所属国家：{_game.CurrentNation.Name}（好感 Lv{_game.NationFavorLevel}"
+            + (_game.NationFavorNeeded > 0
+                ? $"，{_game.NationFavor} / {_game.NationFavorNeeded}）"
+                : "，已满级）");
         GoldText.Text = $"金币：{_game.Gold}";
         LoadText.Text = $"载重：{_game.CargoUnits} / {_game.Capacity}";
         MarketTitle.Text = $"{_game.CurrentCity.Name} 市场（Lv{_game.CityLevel}）";
@@ -194,6 +207,7 @@ public partial class MainWindow : Window
         string? selectedId = (MarketGrid.SelectedItem as MarketRow)?.Good?.Id;
         string? selectedCargoId = (CargoGrid.SelectedItem as CargoRow)?.Good?.Id;
         int? selectedOfferId = (GuildOfferGrid.SelectedItem as MissionRow)?.Mission?.Id;
+        int? selectedNationOfferId = (NationOfferGrid.SelectedItem as MissionRow)?.Mission?.Id;
         int? selectedMissionId = (MyMissionGrid.SelectedItem as MissionRow)?.Mission?.Id;
         string? selectedWarehouseId = (WarehouseGrid.SelectedItem as WarehouseRow)?.Good?.Id;
         string? selectedBuildableId = (BuildableGrid.SelectedItem as BuildableRow)?.Good?.Id;
@@ -264,6 +278,24 @@ public partial class MainWindow : Window
         foreach (var mission in _game.CurrentGuildOffers)
         {
             _guildOffers.Add(ToRow(mission, withOrigin: false));
+        }
+
+        // 国家分页：当前国家的好感进度与该国挂牌的国家任务
+        NationTitleText.Text = $"{_game.CurrentNation.Name} · 国家任务"
+            + (_game.NationFavorNeeded > 0
+                ? $"（好感 Lv{_game.NationFavorLevel}，{_game.NationFavor} / {_game.NationFavorNeeded}）"
+                : $"（好感 Lv{_game.NationFavorLevel}，已满级）");
+
+        NationHintText.Text = _game.NationFavorLevel >= Nation.MaxLevel
+            ? "该国三档国家任务已全部开放。"
+            : _game.NationFavorLevel == 0
+                ? $"尚未与该国建立关系：好感达到 {_game.NationFavorNeeded} 点后开放第一档国家任务。"
+                : $"好感达到 {_game.NationFavorNeeded} 点后开放下一档国家任务。";
+
+        _nationOffers.Clear();
+        foreach (var mission in _game.CurrentNationOffers)
+        {
+            _nationOffers.Add(ToRow(mission, withOrigin: false));
         }
 
         // 重建已接受任务列表
@@ -370,6 +402,37 @@ public partial class MainWindow : Window
             });
         }
 
+        // 家园：房产等级、容量与房产库存（与仓库互不影响）
+        var estate = _game.Estate;
+        HomeTitle.Text = $"{_game.CurrentCity.Name} 家园（房产 {estate.Level} / {Estate.MaxLevel}）";
+        EstateText.Text = estate.IsOwned
+            ? $"房产 Lv{estate.Level}：{estate.Used} / {estate.Capacity} 单位（剩余 {estate.Free}）"
+            : "尚未购置房产（可存放货物，也是长期金币去处）";
+
+        if (!estate.IsMaxLevel && _game.CityLevel < estate.Level + 1)
+        {
+            EstateText.Text += $"（需城市 Lv{estate.Level + 1}）";
+        }
+
+        EstateButton.Content = estate.IsMaxLevel
+            ? $"房产已满级（容量 {estate.Capacity}）"
+            : estate.IsOwned
+                ? $"升级房产（{_game.NextEstateCost} 金币 → 容量 {estate.NextLevelCapacity}）"
+                : $"购置房产（{_game.NextEstateCost} 金币 → 容量 {estate.NextLevelCapacity}）";
+        EstateButton.IsEnabled = !estate.IsMaxLevel
+                                 && _game.CityLevel >= estate.Level + 1
+                                 && _game.Gold >= _game.NextEstateCost;
+
+        _estateStock.Clear();
+        foreach (var good in _game.Goods)
+        {
+            int quantity = estate.QuantityOf(good.Id);
+            if (quantity > 0)
+            {
+                _estateStock.Add(new WarehouseRow { Good = good, Name = good.Name, Quantity = quantity });
+            }
+        }
+
         // 批量卸货/取货：没仓库、没有货或没空位时直接禁用，避免点了必然失败
         StoreAllButton.IsEnabled = warehouse.IsBuilt && _cargo.Count > 0 && warehouse.Free > 0;
         TakeAllButton.IsEnabled = warehouse.IsBuilt && _warehouse.Count > 0 && _game.FreeCapacity > 0;
@@ -410,6 +473,16 @@ public partial class MainWindow : Window
             GuildOfferGrid.SelectedIndex = 0;
         }
 
+        if (selectedNationOfferId != null)
+        {
+            NationOfferGrid.SelectedItem = _nationOffers.FirstOrDefault(r => r.Mission?.Id == selectedNationOfferId);
+        }
+
+        if (NationOfferGrid.SelectedItem == null && _nationOffers.Count > 0)
+        {
+            NationOfferGrid.SelectedIndex = 0;
+        }
+
         if (selectedMissionId != null)
         {
             MyMissionGrid.SelectedItem = _missions.FirstOrDefault(r => r.Mission?.Id == selectedMissionId);
@@ -443,17 +516,29 @@ public partial class MainWindow : Window
         SyncSupplyControls();
     }
 
-    /// <summary>把一条行会任务转换成界面行；已接受任务额外显示起点城市。</summary>
+    /// <summary>把一条任务转换成界面行；已接受任务额外显示起点城市。</summary>
     private MissionRow ToRow(GuildMission mission, bool withOrigin) => new()
     {
         Mission = mission,
-        TypeName = mission.Type == GuildMissionType.Transport ? "运货" : "收购",
+        TypeName = mission.Type switch
+        {
+            GuildMissionType.Transport => "运货",
+            GuildMissionType.Nation => $"国家·{mission.Title}",
+            _ => "收购",
+        },
         OriginName = withOrigin ? mission.Origin.Name : "",
-        TargetName = mission.Type == GuildMissionType.Transport ? mission.Destination.Name : "本地",
+        TargetName = mission.Type switch
+        {
+            GuildMissionType.Transport => mission.Destination.Name,
+            GuildMissionType.Nation => mission.TargetCity.Name,
+            _ => "本地",
+        },
         GoodName = mission.Good.Name,
         Quantity = mission.Quantity,
         RewardGold = mission.RewardGold,
-        RewardReputation = mission.RewardReputation,
+        RewardReputation = mission.Type == GuildMissionType.Nation
+            ? mission.RewardFavor
+            : mission.RewardReputation,
         Deadline = mission.DeadlineDay - _game.Day <= 0
             ? $"第 {mission.DeadlineDay} 天（今天到期）"
             : $"第 {mission.DeadlineDay} 天（剩 {mission.DeadlineDay - _game.Day} 天）",
@@ -594,7 +679,24 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>交付任务：必须身处发布城市，且舱内有足够的货物。</summary>
+    /// <summary>接受国家任务：只能接受当前国家在该国城市挂牌的委托。</summary>
+    private void AcceptNationMissionButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (NationOfferGrid.SelectedItem is not MissionRow { Mission: not null } row)
+        {
+            Log("请先在国家任务列表中选择一条任务。");
+            return;
+        }
+
+        bool ok = _game.AcceptMission(row.Mission, out string message);
+        Log(message);
+        if (ok)
+        {
+            Refresh();
+        }
+    }
+
+    /// <summary>交付任务：必须身处交付城市，且舱内有足够的货物。</summary>
     private void DeliverMissionButton_Click(object sender, RoutedEventArgs e)
     {
         if (MyMissionGrid.SelectedItem is not MissionRow { Mission: not null } row)
@@ -824,6 +926,73 @@ public partial class MainWindow : Window
         {
             Refresh();
         }
+    }
+
+    /// <summary>购置或升级本城房产（家园）。</summary>
+    private void EstateButton_Click(object sender, RoutedEventArgs e)
+    {
+        bool ok = _game.BuyEstate(out string message);
+        Log(message);
+        if (ok)
+        {
+            Refresh();
+        }
+    }
+
+    /// <summary>存入房产：把家园页左侧舱内选中的货物按数量存进本城房产。</summary>
+    private void StoreToEstateButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (EstateCargoGrid.SelectedItem is not CargoRow { Good: not null } row)
+        {
+            Log("请先在舱内货物中选择要存放的货物。");
+            return;
+        }
+
+        if (!TryReadEstateQuantity(out int quantity))
+        {
+            return;
+        }
+
+        bool ok = _game.StoreToEstate(row.Good, quantity, out string message);
+        Log(message);
+        if (ok)
+        {
+            Refresh();
+        }
+    }
+
+    /// <summary>取出房产：把房产库存里选中的货物按数量装进船舱。</summary>
+    private void TakeFromEstateButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (EstateGrid.SelectedItem is not WarehouseRow { Good: not null } row)
+        {
+            Log("请先在房产库存中选择要取出的货物。");
+            return;
+        }
+
+        if (!TryReadEstateQuantity(out int quantity))
+        {
+            return;
+        }
+
+        bool ok = _game.TakeFromEstate(row.Good, quantity, out string message);
+        Log(message);
+        if (ok)
+        {
+            Refresh();
+        }
+    }
+
+    /// <summary>读取家园页的数量输入框；非法时提示并返回 false。</summary>
+    private bool TryReadEstateQuantity(out int quantity)
+    {
+        if (!int.TryParse(EstateQuantityBox.Text.Trim(), out quantity) || quantity <= 0)
+        {
+            Log("请输入大于 0 的整数数量。");
+            return false;
+        }
+
+        return true;
     }
 
     /// <summary>打开只读的产业与仓库总览窗口（跨城查看作坊、仓库与库存明细）。</summary>

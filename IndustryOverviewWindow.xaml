@@ -51,6 +51,7 @@
                     <DataGridTextColumn Header="库存" Binding="{Binding StockSummary}" Width="*"/>
                     <DataGridTextColumn Header="占用量" Binding="{Binding UsageRate}" Width="90"/>
                     <DataGridTextColumn Header="自动卖出" Binding="{Binding AutoSell}" Width="100"/>
+                    <DataGridTextColumn Header="房产" Binding="{Binding EstateInfo}" Width="130"/>
                 </DataGrid.Columns>
             </DataGrid>
         </GroupBox>

@@ -40,16 +40,21 @@ public sealed class City
         _prosperityThresholds = thresholds.Take(MaxLevel + 1).ToArray();
     }
 
-    public City(string name, double x, double y, Dictionary<string, double> multipliers, bool isPort)
+    public City(string name, double x, double y, bool isPort, Nation nation,
+                Dictionary<string, double> multipliers)
     {
         Name = name;
         X = x;
         Y = y;
-        Multipliers = multipliers;
         IsPort = isPort;
+        Nation = nation;
+        Multipliers = multipliers;
     }
 
     public string Name { get; }
+
+    /// <summary>所属国家：国家好感全国共享，国家任务只在该国城市挂牌。</summary>
+    public Nation Nation { get; }
 
     // 简化的地图坐标，仅用于算距离，不做真实寻路
     public double X { get; }
